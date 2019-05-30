@@ -74,10 +74,15 @@ if __name__ == '__main__':
 
 
     #test_subset(file_name, img, preprocessing.GYM_NAME);sys.exit(0)
-
+    #try:
     screen = ScreenshotRaid(img)
 
-    cv2.imwrite("./sections/.a_{}.png".format(file_name), screen._get_anchors_image())
+    logging.debug("is a raid" if screen.is_raid() else "isn't a raid")
+
+    #cv2.imwrite("./sections/.a_{}.png".format(file_name), screen._get_anchors_image())
+    #except Exception:
+    #    logging.warning("{}".format(file_name))
+
 
 
 

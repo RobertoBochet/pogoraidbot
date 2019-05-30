@@ -48,13 +48,3 @@ RAID_TIMER = [
         lambda img: threshold(img, 210)
     ]
 ]
-
-GYM_NAME = [
-    [
-        ((.18, 0.91), (60, 200))
-    ],
-    [
-        lambda img: cv2.cvtColor(img, cv2.COLOR_BGR2GRAY),
-        #lambda img: threshold(img, 210)
-    ]
-]

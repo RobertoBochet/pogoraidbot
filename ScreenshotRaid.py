@@ -14,10 +14,13 @@ class ScreenshotRaid:
     def __init__(self, img):
         self._img = img
         self._size = (len(self._img[0]), len(self._img))
-        self._discover_is_raid()
 
-    def _subset(self, *subs):
+        # DEBUG
+        self._sub = []
 
+        self._find_anchors()
+
+    def _calc_subset(self, *subs):
         if len(subs) == 1:
             subs = subs[0]
 
@@ -40,6 +43,17 @@ class ScreenshotRaid:
                     round(self._size[i] * subs[i][0]) if isinstance(subs[i][0], float) else subs[i][0],
                     round(self._size[i] * subs[i][1]) if isinstance(subs[i][1], float) else subs[i][1]
                 )
+
+            subs[i] = (
+                subs[i][0] + self._size[i] if subs[i][0] < 0 else subs[i][0],
+                subs[i][1] + self._size[i] if subs[i][1] < 0 else subs[i][1]
+            )
+
+        return subs
+
+    def _subset(self, *subs):
+
+        subs = self._calc_subset(*subs)
 
         return self._img[subs[1][0]:subs[1][1], subs[0][0]:subs[0][1]]
 
@@ -174,47 +188,78 @@ class ScreenshotRaid:
         return self._gym_name
 
     def _find_anchors(self):
+        ANCHORS = {
+            "gym_image": [
+                ((0, 0.25), (40, 0.20)),
+                {"param1": 50, "param2": 30, "minRadius": 50, "maxRadius": 65}
+            ],
+            "gym_detail": [
+                ((-0.20, -30), (60, 0.17)),
+                {"param1": 50, "param2": 30, "minRadius": 20, "maxRadius": 40}
+            ],
+            "raid_info": [
+                ((30, 0.25), (-250, 1.0)),
+                {"param1": 50, "param2": 30, "minRadius": 30, "maxRadius": 40}
+            ],
+            "exit": [
+                (0.25, (-250, 1.0)),
+                {"param1": 50, "param2": 30, "minRadius": 30, "maxRadius": 40}
+            ],
+            "gym": [
+                ((-0.25, -30), (-250, 1.0)),
+                {"param1": 50, "param2": 30, "minRadius": 30, "maxRadius": 40}
+            ]
+        }
+
         self._anchors = {}
+        self._anchors_available = 0
 
-        img = self._subset((0, 0.30), (0, 0.20))
+        for a in ANCHORS:
+            self._sub.append(self._calc_subset(ANCHORS[a][0]))
+            img = self._subset(ANCHORS[a][0])
+            circles = cv2.HoughCircles(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), cv2.HOUGH_GRADIENT, 1.2, 100,
+                                       **ANCHORS[a][1])
+            if circles is None:
+                self._anchors[a] = None
+                continue
 
-        circles = cv2.HoughCircles(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), cv2.HOUGH_GRADIENT, 1.2, 100,
-                                   param1=50, param2=30, minRadius=50, maxRadius=65)
-
-        if circles is not None:
             x, y, r = numpy.round(circles[0]).astype("int")[0]
-            self._anchors["raid_info"] = (x, y, r)
 
-        img = self._subset((0, 0.30), (-250, 1.0))
+            subset = self._calc_subset(ANCHORS[a][0])
 
-        circles = cv2.HoughCircles(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), cv2.HOUGH_GRADIENT, 1.2, 100,
-                                   param1=50, param2=30, minRadius=30, maxRadius=40)
+            x += subset[0][0]
+            y += subset[1][0]
 
-        if circles is not None:
-            x, y, r = numpy.round(circles[0]).astype("int")[0]
-            self._anchors["raid_info"] = (x, self._size[1] - 250 + y, r)
+            if subset[0][0] < 0:
+                x += self._size[0]
+            if subset[1][0] < 0:
+                y += self._size[1]
 
-    def _discover_is_raid(self):
-        self._find_anchors()
-
-        return True
+            self._anchors_available += 1
+            self._anchors[a] = (x, y, r)
 
     def _get_anchors_image(self):
         img = self._img.copy()
         for i in self._anchors.values():
+            if i is None:
+                continue
             cv2.circle(img, (i[0], i[1]), i[2], (0, 255, 0), 2)
             cv2.circle(img, (i[0], i[1]), 2, (0, 0, 255), 3)
             logging.debug(i)
+
+        for i in self._sub:
+            print(i)
+            cv2.rectangle(img, (i[0][0], i[1][0]), (i[0][1], i[1][1]), (255, 0, 0), 2)
 
         return img
 
     def is_raid(self):
         try:
-            return self._is_raid
+            return True if self._anchors_available >= 4 else False
         except AttributeError:
             pass
-        self._is_raid = self._discover_is_raid()
-        return self._is_raid
+        self._find_anchors()
+        return True if self._anchors_available >= 4 else False
 
     def compute(self):
         processes = [
