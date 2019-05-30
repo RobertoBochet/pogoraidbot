@@ -4,11 +4,9 @@ import logging
 import os
 import re
 import sys
-import traceback
-import numpy
+
 import cv2
 
-import preprocessing
 from ScreenshotRaid import ScreenshotRaid
 
 
@@ -70,31 +68,31 @@ if __name__ == '__main__':
     for file in glob.glob("./sections/*{}*".format(file_name)) + glob.glob("./sections/.*{}*".format(file_name)):
         os.remove(file)
 
-
-
-
-    #test_subset(file_name, img, preprocessing.GYM_NAME);sys.exit(0)
-    #try:
+    # test_subset(file_name, img, preprocessing.GYM_NAME);sys.exit(0)
+    # try:
     screen = ScreenshotRaid(img)
 
-    logging.debug("is a raid" if screen.is_raid() else "isn't a raid")
+    logging.debug("It {} a raid".format("is" if screen.is_raid() else "isn't"))
+    logging.debug("It is {}".format("a egg" if screen.is_egg() else "hatched"))
 
-    #cv2.imwrite("./sections/.a_{}.png".format(file_name), screen._get_anchors_image())
-    #except Exception:
-    #    logging.warning("{}".format(file_name))
+    try:
+        level = screen.get_level()
+        print("Level is {}".format(level))
 
-
-
+        cv2.imwrite("./sections/.lv_{}_{}.png".format(level, file_name), screen._level_img)
+    except Exception:
+        cv2.imwrite("./sections/lv_{}.png".format(file_name), screen._level_img)
+        logging.warning("failed")
 
     sys.exit(0)
 
     try:
-        gym_name = screen.get_gym_name();
+        gym_name = screen.get_gym_name()
         print("{}".format(gym_name))
 
         cv2.imwrite("./sections/.gn_{}_{}.png".format(gym_name, file_name), screen._gym_name_img)
     except Exception:
-        #test_subset(file_name, img, preprocessing.GYM_NAME)
+        # test_subset(file_name, img, preprocessing.GYM_NAME)
         traceback.print_exc()
 
     sys.exit(0)

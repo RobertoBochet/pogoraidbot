@@ -16,3 +16,7 @@ class RaidTimerNotFound(ValueNotFound):
 
 class GymNameNotFound(ValueNotFound):
     pass
+
+
+class LevelNotFound(ValueNotFound):
+    pass

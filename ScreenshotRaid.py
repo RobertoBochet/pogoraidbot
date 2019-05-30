@@ -85,8 +85,6 @@ class ScreenshotRaid:
                 img = func(self._subset(sub))
                 text = pytesseract.image_to_string(img, config=('--oem 1 --psm 3'))
 
-                logging.debug(text)
-
                 result = rx.search(text)
 
                 self._hatching_timer_img = img
@@ -143,6 +141,27 @@ class ScreenshotRaid:
         return text
         # TODO add the exception case
 
+    def _find_level(self):
+        if self.is_egg():
+            img = self._subset(0.5, (0.25, 0.35))
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            __, img = cv2.threshold(img, 240, 255, cv2.THRESH_BINARY_INV)
+            #img = cv2.GaussianBlur(img, (5, 5), 5)
+            #img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+            circles = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, 1, 5,
+                                       param1=5, param2=5, minRadius=15, maxRadius=25)
+            if circles is not None:
+                for c in circles:
+                    cc = numpy.round(circles[0]).astype("int")[0]
+                    cv2.circle(img, (cc[0], cc[1]), cc[2], (0, 255, 0), 2)
+
+            self._level_img = img
+        else:
+            img = self._subset(0.5, (0.10, 0.20))
+            self._level_img = img
+        raise LevelNotFound
+
     def get_hours(self):
         try:
             if self._hours is not None:
@@ -186,6 +205,17 @@ class ScreenshotRaid:
             pass
         self._gym_name = self._find_gym_name()
         return self._gym_name
+
+    def get_level(self):
+        try:
+            if self._level is not None:
+                return self._level
+            else:
+                raise LevelNotFound
+        except AttributeError:
+            pass
+        self._level = self._find_level()
+        return self._level
 
     def _find_anchors(self):
         ANCHORS = {
@@ -260,6 +290,16 @@ class ScreenshotRaid:
             pass
         self._find_anchors()
         return True if self._anchors_available >= 4 else False
+
+    def is_egg(self):
+        try:
+            self.get_hatching_timer()
+            return True
+        except HatchingTimerNotFound:
+            return False
+
+    def is_hatched(self):
+        return not self.is_egg()
 
     def compute(self):
         processes = [
