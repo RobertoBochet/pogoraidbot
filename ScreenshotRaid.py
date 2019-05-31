@@ -1,5 +1,6 @@
 import logging
 import re
+from functools import reduce
 from multiprocessing import Process
 
 import cv2
@@ -8,7 +9,6 @@ import pytesseract
 
 import preprocessing
 from exceptions import *
-from functools import reduce
 
 
 class ScreenshotRaid:
@@ -21,42 +21,50 @@ class ScreenshotRaid:
 
         self._find_anchors()
 
-    def _calc_subset(self, *subs, remove_negative=True):
-        if len(subs) == 1:
+    def _calc_subset(self, *subs):
+        if len(subs) == 1 and isinstance(subs[0], tuple):
             subs = subs[0]
+        elif len(subs) == 2:
+            subs = list(subs)
+        else:
+            raise Exception
 
-        subs = list(subs)
+        points = [[None, None], [None, None]]
 
         for i in [0, 1]:
-            if not isinstance(subs[i], tuple):
-                if isinstance(subs[i], float):
-                    subs[i] = (
-                        round((0.5 - subs[i] / 2) * self._size[i]),
-                        round((0.5 + subs[i] / 2) * self._size[i])
-                    )
-                else:
-                    subs[i] = (
-                        self._size[i] - round(subs[i] / 2),
-                        self._size[i] - round(subs[i] / 2) + subs[i]
-                    )
-            else:
-                subs[i] = (
-                    round(self._size[i] * subs[i][0]) if isinstance(subs[i][0], float) else subs[i][0],
-                    round(self._size[i] * subs[i][1]) if isinstance(subs[i][1], float) else subs[i][1]
-                )
-            if remove_negative:
-                subs[i] = (
-                    subs[i][0] + self._size[i] if subs[i][0] < 0 else subs[i][0],
-                    subs[i][1] + self._size[i] if subs[i][1] < 0 else subs[i][1]
-                )
+            # Amount of pixels centered
+            if isinstance(subs[i], int):
+                points[0][i] = round(self._size[i] / 2 - subs[i] / 2 - 1)
+                points[1][i] = round(self._size[i] / 2 + subs[i] / 2 - 1)
 
-        return subs
+            # Perceptual of pixels centered
+            elif isinstance(subs[i], float):
+                points[0][i] = round((self._size[i] - 1) * (0.5 - subs[i] / 2))
+                points[1][i] = round((self._size[i] - 1) * (0.5 + subs[i] / 2))
+
+            else:
+                for j in [0, 1]:
+                    v = subs[i][j]
+                    if isinstance(v, float):
+                        if v < 0:
+                            points[j][i] = round((self._size[i] - 1) * v) + self._size[i]
+                        else:
+                            points[j][i] = round((self._size[i] - 1) * v)
+                    else:
+                        if v < 0:
+                            points[j][i] = v + self._size[i]
+                        else:
+                            points[j][i] = v
+
+        logging.debug("request {} calc {} size {}".format(subs, (tuple(points[0]), tuple(points[1])), self._size))
+
+        return (tuple(points[0]), tuple(points[1]))
 
     def _subset(self, *subs):
-
         subs = self._calc_subset(*subs)
+        logging.debug("gotten {} subs".format(subs))
 
-        return self._img[subs[1][0]:subs[1][1], subs[0][0]:subs[0][1]]
+        return self._img[subs[0][0]:subs[1][0], subs[0][1]:subs[1][1]]
 
     def _find_hours(self):
         rx = re.compile(r"([0-2]?[0-9]):([0-5][0-9])")
@@ -89,16 +97,16 @@ class ScreenshotRaid:
 
         mask = cv2.inRange(cv2.cvtColor(img, cv2.COLOR_BGR2HSV), red_lower, red_upper)
 
-        # cv2.imshow("1", mask);cv2.waitKey(2000)
-
         contours, _ = cv2.findContours(mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
-        block = cv2.boundingRect(reduce((lambda x,y: x if cv2.contourArea(x) > cv2.contourArea(y) else y),contours))
+        x, y, w, h = cv2.boundingRect(
+            reduce((lambda x, y: x if cv2.contourArea(x) > cv2.contourArea(y) else y), contours))
 
+        self._anchors["hatching_timer"] = ((sub[0][0] + x, sub[1][0] + y), (sub[0][0] + x + w, sub[1][0] + y + h))
 
-        x, y, w, h = block
-
-        cv2.rectangle(img, (x, y), (x + w, y + h), (255, 0, 0), 3)
+        img = self._subset(self._hatching_timer_position)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        __, img = cv2.threshold(img, 210, 255, cv2.THRESH_BINARY_INV)
 
         self._hatching_timer_img = img
         return
@@ -277,7 +285,6 @@ class ScreenshotRaid:
         self._anchors_available = 0
 
         for a in ANCHORS:
-            self._sub.append(self._calc_subset(ANCHORS[a][0]))
             img = self._subset(ANCHORS[a][0])
             circles = cv2.HoughCircles(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), cv2.HOUGH_GRADIENT, 1.2, 100,
                                        **ANCHORS[a][1])
@@ -303,11 +310,14 @@ class ScreenshotRaid:
     def _get_anchors_image(self):
         img = self._img.copy()
         for i in self._anchors.values():
-            if i is None:
-                continue
-            cv2.circle(img, (i[0], i[1]), i[2], (0, 255, 0), 2)
-            cv2.circle(img, (i[0], i[1]), 2, (0, 0, 255), 3)
-            logging.debug(i)
+            try:
+                if len(i) == 3:
+                    cv2.circle(img, (i[0], i[1]), i[2], (0, 255, 0), 2)
+                    cv2.circle(img, (i[0], i[1]), 2, (0, 0, 255), 3)
+                elif len(i) == 4:
+                    cv2.rectangle(img, i[0], i[1], (0, 255, 0), 2)
+            except Exception:
+                pass
 
         for i in self._sub:
             print(i)
