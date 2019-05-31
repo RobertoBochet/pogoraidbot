@@ -8,6 +8,7 @@ import pytesseract
 
 import preprocessing
 from exceptions import *
+from functools import reduce
 
 
 class ScreenshotRaid:
@@ -20,7 +21,7 @@ class ScreenshotRaid:
 
         self._find_anchors()
 
-    def _calc_subset(self, *subs):
+    def _calc_subset(self, *subs, remove_negative=True):
         if len(subs) == 1:
             subs = subs[0]
 
@@ -43,11 +44,11 @@ class ScreenshotRaid:
                     round(self._size[i] * subs[i][0]) if isinstance(subs[i][0], float) else subs[i][0],
                     round(self._size[i] * subs[i][1]) if isinstance(subs[i][1], float) else subs[i][1]
                 )
-
-            subs[i] = (
-                subs[i][0] + self._size[i] if subs[i][0] < 0 else subs[i][0],
-                subs[i][1] + self._size[i] if subs[i][1] < 0 else subs[i][1]
-            )
+            if remove_negative:
+                subs[i] = (
+                    subs[i][0] + self._size[i] if subs[i][0] < 0 else subs[i][0],
+                    subs[i][1] + self._size[i] if subs[i][1] < 0 else subs[i][1]
+                )
 
         return subs
 
@@ -78,6 +79,30 @@ class ScreenshotRaid:
         raise HoursNotFound
 
     def _find_hatching_timer(self):
+        red_lower = numpy.array([150, 100, 230])
+        red_upper = numpy.array([255, 130, 255])
+
+        sub = self._calc_subset(0.35, (0.15, 0.29))
+
+        img = self._subset(sub)
+        img = cv2.GaussianBlur(img, (5, 5), 5)
+
+        mask = cv2.inRange(cv2.cvtColor(img, cv2.COLOR_BGR2HSV), red_lower, red_upper)
+
+        # cv2.imshow("1", mask);cv2.waitKey(2000)
+
+        contours, _ = cv2.findContours(mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+
+        block = cv2.boundingRect(reduce((lambda x,y: x if cv2.contourArea(x) > cv2.contourArea(y) else y),contours))
+
+
+        x, y, w, h = block
+
+        cv2.rectangle(img, (x, y), (x + w, y + h), (255, 0, 0), 3)
+
+        self._hatching_timer_img = img
+        return
+
         rx = re.compile(r"([0-3]):([0-5][0-9]):([0-5][0-9])")
 
         for sub in preprocessing.HATCHING_TIMER[0]:
@@ -143,18 +168,25 @@ class ScreenshotRaid:
 
     def _find_level(self):
         if self.is_egg():
+            f = 4
             img = self._subset(0.5, (0.25, 0.35))
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             __, img = cv2.threshold(img, 240, 255, cv2.THRESH_BINARY_INV)
-            #img = cv2.GaussianBlur(img, (5, 5), 5)
-            #img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            img = cv2.resize(img, None, fx=1 / f, fy=1 / f, interpolation=cv2.INTER_LINEAR)
+            img = cv2.GaussianBlur(img, (3, 3), 3)
+            img = cv2.resize(img, None, fx=f, fy=f, interpolation=cv2.INTER_LINEAR)
+            __, img = cv2.threshold(img, 240, 255, cv2.THRESH_BINARY)
 
-            circles = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, 1, 5,
-                                       param1=5, param2=5, minRadius=15, maxRadius=25)
+            circles = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, 0.5, 45,
+                                       param1=15, param2=10, minRadius=15, maxRadius=25)
+
+            img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
             if circles is not None:
+                print(circles)
+                logging.debug("find {} circles".format(len(circles[0])))
+                circles = numpy.round(circles[0]).astype("int")
                 for c in circles:
-                    cc = numpy.round(circles[0]).astype("int")[0]
-                    cv2.circle(img, (cc[0], cc[1]), cc[2], (0, 255, 0), 2)
+                    cv2.circle(img, (c[0], c[1]), c[2], (0, 255, 0), 2)
 
             self._level_img = img
         else:

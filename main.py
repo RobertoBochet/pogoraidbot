@@ -68,9 +68,31 @@ if __name__ == '__main__':
     for file in glob.glob("./sections/*{}*".format(file_name)) + glob.glob("./sections/.*{}*".format(file_name)):
         os.remove(file)
 
-    # test_subset(file_name, img, preprocessing.GYM_NAME);sys.exit(0)
-    # try:
+
+
+
+
     screen = ScreenshotRaid(img)
+    try:
+        time = screen.get_hatching_timer()
+
+        cv2.imwrite("./sections/.th_{}_{}.png".format(time, file_name), screen._hatching_timer_img)
+    except Exception:
+        cv2.imwrite("./sections/th_{}.png".format(file_name), screen._hatching_timer_img)
+        logging.warning("failed")
+
+
+
+
+
+
+
+
+
+
+
+
+    '''
 
     logging.debug("It {} a raid".format("is" if screen.is_raid() else "isn't"))
     logging.debug("It is {}".format("a egg" if screen.is_egg() else "hatched"))
@@ -83,7 +105,7 @@ if __name__ == '__main__':
     except Exception:
         cv2.imwrite("./sections/lv_{}.png".format(file_name), screen._level_img)
         logging.warning("failed")
-
+    '''
     sys.exit(0)
 
     try:
