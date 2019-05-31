@@ -2,11 +2,23 @@ class ValueNotFound(Exception):
     pass
 
 
+class ValueUnreadable(Exception):
+    pass
+
+
 class HoursNotFound(ValueNotFound):
     pass
 
 
-class HatchingTimerNotFound(ValueNotFound):
+class HatchingTimerException(Exception):
+    pass
+
+
+class HatchingTimerNotFound(HatchingTimerException, ValueNotFound):
+    pass
+
+
+class HatchingTimerUnreadable(HatchingTimerException, ValueUnreadable):
     pass
 
 

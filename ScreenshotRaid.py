@@ -16,6 +16,7 @@ class ScreenshotRaid:
         self._img = img
         self._size = (len(self._img[0]), len(self._img))
 
+        # cv2.imshow("a",self._img);cv2.waitKey(1000)
         # DEBUG
         self._sub = []
 
@@ -39,8 +40,8 @@ class ScreenshotRaid:
 
             # Perceptual of pixels centered
             elif isinstance(subs[i], float):
-                points[0][i] = round((self._size[i] - 1) * (0.5 - subs[i] / 2))
-                points[1][i] = round((self._size[i] - 1) * (0.5 + subs[i] / 2))
+                points[0][i] = round((self._size[i] - 1) / 2 - subs[i] * (self._size[i] - 1) / 2)
+                points[1][i] = round((self._size[i] - 1) / 2 + subs[i] * (self._size[i] - 1) / 2)
 
             else:
                 for j in [0, 1]:
@@ -56,15 +57,76 @@ class ScreenshotRaid:
                         else:
                             points[j][i] = v
 
-        logging.debug("request {} calc {} size {}".format(subs, (tuple(points[0]), tuple(points[1])), self._size))
+        # logging.debug("request {} calc {} size {}".format(subs, (tuple(points[0]), tuple(points[1])), self._size))
 
         return (tuple(points[0]), tuple(points[1]))
 
-    def _subset(self, *subs):
-        subs = self._calc_subset(*subs)
-        logging.debug("gotten {} subs".format(subs))
+    def _subset(self, rect):
+        return self._img[rect[0][1]:rect[1][1], rect[0][0]:rect[1][0]]
 
-        return self._img[subs[0][0]:subs[1][0], subs[0][1]:subs[1][1]]
+    def get_hatching_timer_position(self):
+        try:
+            if self._anchors["hatching_timer"] is not None:
+                return self._anchors["hatching_timer"]
+            else:
+                raise HatchingTimerNotFound
+        except (AttributeError, KeyError):
+            pass
+        self._anchors["hatching_timer"] = None
+        self._anchors["hatching_timer"] = self._find_hatching_timer()
+        return self._anchors["hatching_timer"]
+
+    def _find_hatching_timer(self):
+        red_lower = numpy.array([150, 100, 230])
+        red_upper = numpy.array([255, 130, 255])
+
+        sub = self._calc_subset(0.35, (0.15, 0.29))
+
+        img = self._subset(sub)
+        img = cv2.GaussianBlur(img, (5, 5), 5)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+
+        mask = cv2.inRange(img, red_lower, red_upper)
+
+        try:
+            contours, _ = cv2.findContours(mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+
+            x, y, w, h = cv2.boundingRect(
+                reduce((lambda x, y: x if cv2.contourArea(x) > cv2.contourArea(y) else y), contours))
+
+            return ((sub[0][0] + x, sub[0][1] + y), (sub[0][0] + x + w, sub[0][1] + y + h))
+        except:
+            pass
+        raise HatchingTimerNotFound
+
+    def get_hatching_timer(self):
+        try:
+            if self._hatching_timer is not None:
+                return self._hatching_timer
+            else:
+                raise HatchingTimerUnreadable
+        except AttributeError:
+            pass
+        self._hatching_timer = None
+        self._hatching_timer = self._read_hatching_timer()
+        return self._hatching_timer
+
+    def _read_hatching_timer(self):
+        img = self._subset(self.get_hatching_timer_position())
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        __, img = cv2.threshold(img, 210, 255, cv2.THRESH_BINARY_INV)
+
+        text = pytesseract.image_to_string(img, config=('--oem 1 --psm 3'))
+
+        result = re.search(r"([0-3]):([0-5][0-9]):([0-5][0-9])", text)
+
+        self._hatching_timer_img = img  # DEBUG
+
+        try:
+            return (int(result.group(1)), int(result.group(2)), int(result.group(3)))
+        except Exception:
+            pass
+        raise HatchingTimerUnreadable
 
     def _find_hours(self):
         rx = re.compile(r"([0-2]?[0-9]):([0-5][0-9])")
@@ -85,48 +147,6 @@ class ScreenshotRaid:
 
         self._hours = None
         raise HoursNotFound
-
-    def _find_hatching_timer(self):
-        red_lower = numpy.array([150, 100, 230])
-        red_upper = numpy.array([255, 130, 255])
-
-        sub = self._calc_subset(0.35, (0.15, 0.29))
-
-        img = self._subset(sub)
-        img = cv2.GaussianBlur(img, (5, 5), 5)
-
-        mask = cv2.inRange(cv2.cvtColor(img, cv2.COLOR_BGR2HSV), red_lower, red_upper)
-
-        contours, _ = cv2.findContours(mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-
-        x, y, w, h = cv2.boundingRect(
-            reduce((lambda x, y: x if cv2.contourArea(x) > cv2.contourArea(y) else y), contours))
-
-        self._anchors["hatching_timer"] = ((sub[0][0] + x, sub[1][0] + y), (sub[0][0] + x + w, sub[1][0] + y + h))
-
-        img = self._subset(self._hatching_timer_position)
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        __, img = cv2.threshold(img, 210, 255, cv2.THRESH_BINARY_INV)
-
-        self._hatching_timer_img = img
-        return
-
-        rx = re.compile(r"([0-3]):([0-5][0-9]):([0-5][0-9])")
-
-        for sub in preprocessing.HATCHING_TIMER[0]:
-            for func in preprocessing.HATCHING_TIMER[1]:
-                img = func(self._subset(sub))
-                text = pytesseract.image_to_string(img, config=('--oem 1 --psm 3'))
-
-                result = rx.search(text)
-
-                self._hatching_timer_img = img
-
-                if result is not None:
-                    return (int(result.group(1)), int(result.group(2)), int(result.group(3)))
-
-        self._hatching_timer = None
-        raise HatchingTimerNotFound
 
     def _find_raid_timer(self):
         rx = re.compile(r"([0-3]):([0-5][0-9]):([0-5][0-9])")
@@ -213,17 +233,6 @@ class ScreenshotRaid:
         self._hours = self._find_hours()
         return self._hours
 
-    def get_hatching_timer(self):
-        try:
-            if self._hatching_timer is not None:
-                return self._hatching_timer
-            else:
-                raise HatchingTimerNotFound
-        except AttributeError:
-            pass
-        self._hatching_timer = self._find_hatching_timer()
-        return self._hatching_timer
-
     def get_raid_timer(self):
         try:
             if self._raid_timer is not None:
@@ -285,7 +294,8 @@ class ScreenshotRaid:
         self._anchors_available = 0
 
         for a in ANCHORS:
-            img = self._subset(ANCHORS[a][0])
+            sub = self._calc_subset(ANCHORS[a][0])
+            img = self._subset(sub)
             circles = cv2.HoughCircles(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), cv2.HOUGH_GRADIENT, 1.2, 100,
                                        **ANCHORS[a][1])
             if circles is None:
@@ -294,15 +304,8 @@ class ScreenshotRaid:
 
             x, y, r = numpy.round(circles[0]).astype("int")[0]
 
-            subset = self._calc_subset(ANCHORS[a][0])
-
-            x += subset[0][0]
-            y += subset[1][0]
-
-            if subset[0][0] < 0:
-                x += self._size[0]
-            if subset[1][0] < 0:
-                y += self._size[1]
+            x += sub[0][0]
+            y += sub[0][1]
 
             self._anchors_available += 1
             self._anchors[a] = (x, y, r)
@@ -314,7 +317,7 @@ class ScreenshotRaid:
                 if len(i) == 3:
                     cv2.circle(img, (i[0], i[1]), i[2], (0, 255, 0), 2)
                     cv2.circle(img, (i[0], i[1]), 2, (0, 0, 255), 3)
-                elif len(i) == 4:
+                elif len(i) == 2:
                     cv2.rectangle(img, i[0], i[1], (0, 255, 0), 2)
             except Exception:
                 pass

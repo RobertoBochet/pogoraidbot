@@ -73,6 +73,10 @@ if __name__ == '__main__':
 
 
     screen = ScreenshotRaid(img)
+
+    screen.get_hatching_timer_position()
+    cv2.imwrite("./sections/.ah_{}.png".format(file_name), screen._get_anchors_image())
+
     try:
         time = screen.get_hatching_timer()
 
