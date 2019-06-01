@@ -68,25 +68,17 @@ if __name__ == '__main__':
     for file in glob.glob("./sections/*{}*".format(file_name)) + glob.glob("./sections/.*{}*".format(file_name)):
         os.remove(file)
 
-
-
-
-
     screen = ScreenshotRaid(img)
-    try:
-        screen.get_raid_timer_position()
-        screen.get_hatching_timer_position()
-    except:
-        pass
-    cv2.imwrite("./sections/.ah_{}.png".format(file_name), screen._get_anchors_image())
 
     try:
-        timer = screen.get_raid_timer()
-        logging.debug("Raid timer: {}".format(timer))
-        cv2.imwrite("./sections/.rt_{}_{}.png".format(timer, file_name), screen._raid_timer_img)
+        timer = screen.get_timer()
+        logging.debug("Timer: {}".format(timer))
+        cv2.imwrite("./sections/.t_{}_{}.png".format(timer, file_name),
+                    screen._hatching_timer_img if screen.is_egg() else screen._raid_timer_img)
     except Exception:
-        cv2.imwrite("./sections/rt_{}.png".format(file_name), screen._raid_timer_img)
-        logging.debug("Raid timer: unknown")
+        cv2.imwrite("./sections/t_{}.png".format(file_name),
+                    screen._hatching_timer_img if screen.is_egg() else screen._raid_timer_img)
+        logging.debug("Timer: unknown")
 
     try:
         level = screen.get_level()
@@ -96,17 +88,7 @@ if __name__ == '__main__':
         cv2.imwrite("./sections/l_{}.png".format(file_name), screen._level_img)
         logging.debug("Level: unknown")
 
-
-
-
-
-
-
-
-
-
-
-
+    cv2.imwrite("./sections/.ah_{}.png".format(file_name), screen._get_anchors_image())
     '''
 
     logging.debug("It {} a raid".format("is" if screen.is_raid() else "isn't"))

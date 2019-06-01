@@ -219,28 +219,6 @@ class ScreenshotRaid:
         self._hours = None
         raise HoursNotFound
 
-    """
-    def _find_raid_timer(self):
-        rx = re.compile(r"([0-3]):([0-5][0-9]):([0-5][0-9])")
-
-        for sub in preprocessing.RAID_TIMER[0]:
-            for func in preprocessing.RAID_TIMER[1]:
-                img = func(self._subset(sub))
-                text = pytesseract.image_to_string(img, config=('--oem 1 --psm 3'))
-
-                logging.debug(text)
-
-                result = rx.search(text)
-
-                self._raid_timer_img = img
-
-                if result is not None:
-                    return (int(result.group(1)), int(result.group(2)), int(result.group(3)))
-
-        self._raid_timer = None
-        raise RaidTimerNotFound
-    """
-
     def _find_gym_name(self):
         circle_img = self._subset((0, 0.30), (0, 0.20))
 
@@ -404,7 +382,7 @@ class ScreenshotRaid:
         try:
             self.get_hatching_timer()
             return True
-        except HatchingTimerNotFound:
+        except HatchingTimerException:
             return False
 
     def is_hatched(self):
