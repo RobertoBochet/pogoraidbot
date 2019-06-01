@@ -6,7 +6,7 @@ class ValueUnreadable(Exception):
     pass
 
 
-class HoursNotFound(ValueNotFound):
+class TimeNotFound(ValueNotFound):
     pass
 
 

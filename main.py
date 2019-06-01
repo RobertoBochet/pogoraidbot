@@ -70,13 +70,32 @@ if __name__ == '__main__':
 
     screen = ScreenshotRaid(img)
 
+    logging.debug("Is a raid: {}".format(screen.is_raid()))
+    logging.debug("Is a egg: {}".format(screen.is_egg()))
+
+    try:
+        time = screen.get_time()
+        logging.debug("Time: {}:{}".format(*time))
+        cv2.imwrite("./sections/.t_{}_{}.png".format(time, file_name), screen._time_img)
+    except Exception:
+        cv2.imwrite("./sections/t_{}.png".format(file_name), screen._time_img)
+        logging.debug("Time: unknown")
+
+    try:
+        gym_name = screen.get_gym_name()
+        logging.debug("Gym name: {}".format(gym_name))
+        cv2.imwrite("./sections/.gn_{}_{}.png".format(gym_name, file_name), screen._gym_name_img)
+    except Exception:
+        cv2.imwrite("./sections/gn_{}.png".format(file_name), screen._gym_name_img)
+        logging.debug("Gym name: unknown")
+
     try:
         timer = screen.get_timer()
-        logging.debug("Timer: {}".format(timer))
-        cv2.imwrite("./sections/.t_{}_{}.png".format(timer, file_name),
+        logging.debug("Timer: {}:{}:{}".format(*timer))
+        cv2.imwrite("./sections/.tr_{}_{}.png".format(timer, file_name),
                     screen._hatching_timer_img if screen.is_egg() else screen._raid_timer_img)
     except Exception:
-        cv2.imwrite("./sections/t_{}.png".format(file_name),
+        cv2.imwrite("./sections/tr_{}.png".format(file_name),
                     screen._hatching_timer_img if screen.is_egg() else screen._raid_timer_img)
         logging.debug("Timer: unknown")
 
@@ -89,59 +108,3 @@ if __name__ == '__main__':
         logging.debug("Level: unknown")
 
     cv2.imwrite("./sections/.ah_{}.png".format(file_name), screen._get_anchors_image())
-    '''
-
-    logging.debug("It {} a raid".format("is" if screen.is_raid() else "isn't"))
-    logging.debug("It is {}".format("a egg" if screen.is_egg() else "hatched"))
-
-    try:
-        level = screen.get_level()
-        print("Level is {}".format(level))
-
-        cv2.imwrite("./sections/.lv_{}_{}.png".format(level, file_name), screen._level_img)
-    except Exception:
-        cv2.imwrite("./sections/lv_{}.png".format(file_name), screen._level_img)
-        logging.warning("failed")
-    '''
-    sys.exit(0)
-
-    try:
-        gym_name = screen.get_gym_name()
-        print("{}".format(gym_name))
-
-        cv2.imwrite("./sections/.gn_{}_{}.png".format(gym_name, file_name), screen._gym_name_img)
-    except Exception:
-        # test_subset(file_name, img, preprocessing.GYM_NAME)
-        traceback.print_exc()
-
-    sys.exit(0)
-
-    try:
-        hours, minutes, second = screen.get_raid_timer();
-        print("{}:{}:{}".format(hours, minutes, second))
-
-        cv2.imwrite("./sections/.rt_{}:{}:{}_{}.png".format(hours, minutes, second, file_name), screen._raid_timer_img)
-    except Exception:
-        test_subset(file_name, img, preprocessing.RAID_TIMER)
-        traceback.print_exc()
-
-    sys.exit(0)
-
-    try:
-        hours, minutes, second = screen.get_hatching_timer();
-        print("{}:{}:{}".format(hours, minutes, second))
-
-        cv2.imwrite("./sections/.ht_{}:{}:{}_{}.png".format(hours, minutes, second, file_name),
-                    screen._hatching_timer_img)
-    except Exception:
-        test_subset(file_name, img, preprocessing.HATCHING_TIMER)
-        traceback.print_exc()
-
-    try:
-        hours, minutes = screen.get_hours();
-        print("{}:{}".format(hours, minutes))
-
-        cv2.imwrite("./sections/.t_{}:{}_{}.png".format(hours, minutes, file_name), screen._notice_bar)
-    except Exception:
-        test_subset(file_name, img, preprocessing.HOURS)
-        traceback.print_exc()
