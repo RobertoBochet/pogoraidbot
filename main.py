@@ -71,6 +71,10 @@ if __name__ == '__main__':
     screen = ScreenshotRaid(img)
 
     logging.debug("Is a raid: {}".format(screen.is_raid()))
+
+    if not screen.is_raid():
+        sys.exit(1)
+
     logging.debug("Is a egg: {}".format(screen.is_egg()))
 
     try:

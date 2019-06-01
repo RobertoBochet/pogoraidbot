@@ -216,6 +216,7 @@ class ScreenshotRaid:
             sub = self._calc_subset((200, -160), (60, 150))
 
         img = self._subset(sub)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         __, img = cv2.threshold(img, 220, 255, cv2.THRESH_BINARY_INV)
         text = pytesseract.image_to_string(img, config=('-l ita --oem 1 --psm 3'))
 
