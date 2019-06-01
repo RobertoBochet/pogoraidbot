@@ -77,13 +77,14 @@ if __name__ == '__main__':
     screen.get_hatching_timer_position()
     cv2.imwrite("./sections/.ah_{}.png".format(file_name), screen._get_anchors_image())
 
-    try:
-        time = screen.get_hatching_timer()
 
-        cv2.imwrite("./sections/.th_{}_{}.png".format(time, file_name), screen._hatching_timer_img)
+    try:
+        level = screen.get_level()
+        logging.debug("Level: {}".format(level))
+        cv2.imwrite("./sections/.l_{}_{}.png".format(level, file_name), screen._level_img)
     except Exception:
-        cv2.imwrite("./sections/th_{}.png".format(file_name), screen._hatching_timer_img)
-        logging.warning("failed")
+        cv2.imwrite("./sections/l_{}.png".format(file_name), screen._level_img)
+        logging.debug("Level: unknown")
 
 
 

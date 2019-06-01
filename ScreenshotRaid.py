@@ -194,33 +194,46 @@ class ScreenshotRaid:
         return text
         # TODO add the exception case
 
+    def get_level(self):
+        try:
+            if self._level is not None:
+                return self._level
+            else:
+                raise LevelNotFound
+        except AttributeError:
+            pass
+        self._level = None
+        self._level = self._find_level()
+        return self._level
+
     def _find_level(self):
         if self.is_egg():
-            f = 4
-            img = self._subset(0.5, (0.25, 0.35))
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            __, img = cv2.threshold(img, 240, 255, cv2.THRESH_BINARY_INV)
-            img = cv2.resize(img, None, fx=1 / f, fy=1 / f, interpolation=cv2.INTER_LINEAR)
-            img = cv2.GaussianBlur(img, (3, 3), 3)
-            img = cv2.resize(img, None, fx=f, fy=f, interpolation=cv2.INTER_LINEAR)
-            __, img = cv2.threshold(img, 240, 255, cv2.THRESH_BINARY)
-
-            circles = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, 0.5, 45,
-                                       param1=15, param2=10, minRadius=15, maxRadius=25)
-
-            img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-            if circles is not None:
-                print(circles)
-                logging.debug("find {} circles".format(len(circles[0])))
-                circles = numpy.round(circles[0]).astype("int")
-                for c in circles:
-                    cv2.circle(img, (c[0], c[1]), c[2], (0, 255, 0), 2)
-
-            self._level_img = img
+            ht_pos = self.get_hatching_timer_position()
+            sub = ((ht_pos[0][0] - 60, ht_pos[1][1] + 25), (ht_pos[1][0] + 60, ht_pos[1][1] + 95))
         else:
-            img = self._subset(0.5, (0.10, 0.20))
-            self._level_img = img
-        raise LevelNotFound
+            sub = self._calc_subset(0.5, (0.10, 0.20))
+
+        img = self._subset(sub)
+
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        img = cv2.GaussianBlur(img, (3, 3), 3)
+        __, img = cv2.threshold(img, 252, 255, cv2.THRESH_BINARY)
+        img = cv2.resize(img, None, fx=1 / 4, fy=1 / 4, interpolation=cv2.INTER_LINEAR)
+        img = cv2.resize(img, None, fx=4, fy=4, interpolation=cv2.INTER_LINEAR)
+        __, img = cv2.threshold(img, 100, 255, cv2.THRESH_BINARY)
+        img = cv2.dilate(img, None, iterations=6)
+
+        contours, _ = cv2.findContours(img, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+        contours = list(filter((lambda x: cv2.contourArea(x) > 400), contours))
+
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+        img = cv2.drawContours(img, contours, -1, (255, 0, 0), 2)
+
+        self._level_img = img
+
+        return len(contours)
+
+        raise LevelNotFound  # TODO find a method to detect error
 
     def get_hours(self):
         try:
@@ -254,17 +267,6 @@ class ScreenshotRaid:
             pass
         self._gym_name = self._find_gym_name()
         return self._gym_name
-
-    def get_level(self):
-        try:
-            if self._level is not None:
-                return self._level
-            else:
-                raise LevelNotFound
-        except AttributeError:
-            pass
-        self._level = self._find_level()
-        return self._level
 
     def _find_anchors(self):
         ANCHORS = {
