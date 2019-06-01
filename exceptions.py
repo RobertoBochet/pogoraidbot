@@ -10,19 +10,35 @@ class HoursNotFound(ValueNotFound):
     pass
 
 
+class TimerNotFound(ValueNotFound):
+    pass
+
+
+class TimerUnreadable(ValueUnreadable):
+    pass
+
+
 class HatchingTimerException(Exception):
     pass
 
 
-class HatchingTimerNotFound(HatchingTimerException, ValueNotFound):
+class HatchingTimerNotFound(HatchingTimerException, TimerNotFound):
     pass
 
 
-class HatchingTimerUnreadable(HatchingTimerException, ValueUnreadable):
+class HatchingTimerUnreadable(HatchingTimerException, TimerUnreadable):
     pass
 
 
-class RaidTimerNotFound(ValueNotFound):
+class RaidTimerException(Exception):
+    pass
+
+
+class RaidTimerNotFound(RaidTimerException, TimerNotFound):
+    pass
+
+
+class RaidTimerUnreadable(RaidTimerException, TimerUnreadable):
     pass
 
 

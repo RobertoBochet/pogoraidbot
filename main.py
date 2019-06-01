@@ -73,10 +73,20 @@ if __name__ == '__main__':
 
 
     screen = ScreenshotRaid(img)
-
-    screen.get_hatching_timer_position()
+    try:
+        screen.get_raid_timer_position()
+        screen.get_hatching_timer_position()
+    except:
+        pass
     cv2.imwrite("./sections/.ah_{}.png".format(file_name), screen._get_anchors_image())
 
+    try:
+        timer = screen.get_raid_timer()
+        logging.debug("Raid timer: {}".format(timer))
+        cv2.imwrite("./sections/.rt_{}_{}.png".format(timer, file_name), screen._raid_timer_img)
+    except Exception:
+        cv2.imwrite("./sections/rt_{}.png".format(file_name), screen._raid_timer_img)
+        logging.debug("Raid timer: unknown")
 
     try:
         level = screen.get_level()

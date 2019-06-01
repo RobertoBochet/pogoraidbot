@@ -88,6 +88,8 @@ class ScreenshotRaid:
 
         mask = cv2.inRange(img, red_lower, red_upper)
 
+        self._hatching_timer_img = mask  # TODO debug
+
         try:
             contours, _ = cv2.findContours(mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -116,17 +118,86 @@ class ScreenshotRaid:
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         __, img = cv2.threshold(img, 210, 255, cv2.THRESH_BINARY_INV)
 
+        self._hatching_timer_img = img  # TODO debug
+
         text = pytesseract.image_to_string(img, config=('--oem 1 --psm 3'))
 
         result = re.search(r"([0-3]):([0-5][0-9]):([0-5][0-9])", text)
-
-        self._hatching_timer_img = img  # DEBUG
 
         try:
             return (int(result.group(1)), int(result.group(2)), int(result.group(3)))
         except Exception:
             pass
         raise HatchingTimerUnreadable
+
+    def get_raid_timer_position(self):
+        try:
+            if self._anchors["raid_timer"] is not None:
+                return self._anchors["raid_timer"]
+            else:
+                raise RaidTimerNotFound
+        except (AttributeError, KeyError):
+            pass
+        self._anchors["raid_timer"] = None
+        self._anchors["raid_timer"] = self._find_raid_timer()
+        return self._anchors["raid_timer"]
+
+    def _find_raid_timer(self):
+        red_lower = numpy.array([-50, 175, 230])
+        red_upper = numpy.array([50, 205, 255])
+
+        sub = self._calc_subset(((-0.30, -0.02), (0.54, 0.65)))
+
+        img = self._subset(sub)
+        img = cv2.GaussianBlur(img, (5, 5), 5)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+
+        mask = cv2.inRange(img, red_lower, red_upper)
+
+        self._raid_timer_img = mask  # TODO debug
+
+        try:
+            contours, _ = cv2.findContours(mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+
+            x, y, w, h = cv2.boundingRect(
+                reduce((lambda x, y: x if cv2.contourArea(x) > cv2.contourArea(y) else y), contours))
+
+            return ((sub[0][0] + x, sub[0][1] + y), (sub[0][0] + x + w, sub[0][1] + y + h))
+        except:
+            pass
+        raise RaidTimerNotFound
+
+    def get_raid_timer(self):
+        try:
+            if self._raid_timer is not None:
+                return self._raid_timer
+            else:
+                raise RaidTimerUnreadable
+        except AttributeError:
+            pass
+        self._raid_timer = None
+        self._raid_timer = self._read_raid_timer()
+        return self._raid_timer
+
+    def _read_raid_timer(self):
+        img = self._subset(self.get_raid_timer_position())
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        __, img = cv2.threshold(img, 210, 255, cv2.THRESH_BINARY_INV)
+
+        self._raid_timer_img = img  # TODO debug
+
+        text = pytesseract.image_to_string(img, config=('--oem 1 --psm 3'))
+
+        result = re.search(r"([0-3]):([0-5][0-9]):([0-5][0-9])", text)
+
+        try:
+            return (int(result.group(1)), int(result.group(2)), int(result.group(3)))
+        except Exception:
+            pass
+        raise RaidTimerUnreadable
+
+    def get_timer(self):
+        return self.get_hatching_timer() if self.is_egg() else self.get_raid_timer()
 
     def _find_hours(self):
         rx = re.compile(r"([0-2]?[0-9]):([0-5][0-9])")
@@ -148,6 +219,7 @@ class ScreenshotRaid:
         self._hours = None
         raise HoursNotFound
 
+    """
     def _find_raid_timer(self):
         rx = re.compile(r"([0-3]):([0-5][0-9]):([0-5][0-9])")
 
@@ -167,6 +239,7 @@ class ScreenshotRaid:
 
         self._raid_timer = None
         raise RaidTimerNotFound
+    """
 
     def _find_gym_name(self):
         circle_img = self._subset((0, 0.30), (0, 0.20))
@@ -211,7 +284,7 @@ class ScreenshotRaid:
             ht_pos = self.get_hatching_timer_position()
             sub = ((ht_pos[0][0] - 60, ht_pos[1][1] + 25), (ht_pos[1][0] + 60, ht_pos[1][1] + 95))
         else:
-            sub = self._calc_subset(0.5, (0.10, 0.20))
+            sub = self._calc_subset(0.5, (0.10, 0.20))  # TODO improve subset in raid for level
 
         img = self._subset(sub)
 
@@ -245,17 +318,6 @@ class ScreenshotRaid:
             pass
         self._hours = self._find_hours()
         return self._hours
-
-    def get_raid_timer(self):
-        try:
-            if self._raid_timer is not None:
-                return self._raid_timer
-            else:
-                raise RaidTimerNotFound
-        except AttributeError:
-            pass
-        self._raid_timer = self._find_raid_timer()
-        return self._raid_timer
 
     def get_gym_name(self):
         try:
