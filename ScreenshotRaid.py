@@ -12,7 +12,6 @@ from exceptions import *
 
 class ScreenshotRaid:
     def __init__(self, img):
-        print(type(img))
         if isinstance(img, numpy.ndarray):
             self._img = img
         elif isinstance(img, bytearray):
