@@ -24,8 +24,7 @@ class PoGORaidBot():
         logging.info(
             "New image is arrived from {} by {}".format(update.effective_chat.title, update.effective_user.username))
 
-        photo = update.message.photo[-1].get_file().download_as_bytearray()
-        img = cv2.imdecode(numpy.asarray(photo, dtype="uint8"), cv2.IMREAD_COLOR)
+        img = update.message.photo[-1].get_file().download_as_bytearray()
 
         screen = ScreenshotRaid(img)
 

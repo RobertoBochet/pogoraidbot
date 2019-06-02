@@ -12,7 +12,14 @@ from exceptions import *
 
 class ScreenshotRaid:
     def __init__(self, img):
-        self._img = img
+        print(type(img))
+        if isinstance(img, numpy.ndarray):
+            self._img = img
+        elif isinstance(img, bytearray):
+            self._img = cv2.imdecode(numpy.asarray(img, dtype="uint8"), cv2.IMREAD_COLOR)
+        else:
+            raise Exception  # TODO: create adhoc exception
+
         self._size = (len(self._img[0]), len(self._img))
 
         self._find_anchors()
@@ -332,7 +339,6 @@ class ScreenshotRaid:
                 pass
 
         raise TimeNotFound
-
 
     def _find_anchors(self):
         ANCHORS = {
