@@ -1,13 +1,18 @@
+import datetime
 import logging
 import re
 from functools import reduce
 from multiprocessing import Process
+from typing import Tuple
 
 import cv2
 import numpy
 import pytesseract
 
 from exceptions import *
+from raid import Raid
+
+Rect = Tuple[Tuple[int, int], Tuple[int, int]]
 
 
 class ScreenshotRaid:
@@ -23,7 +28,7 @@ class ScreenshotRaid:
 
         self._find_anchors()
 
-    def _calc_subset(self, *subs):
+    def _calc_subset(self, *subs) -> Rect:
         if len(subs) == 1 and isinstance(subs[0], tuple):
             subs = subs[0]
         elif len(subs) == 2:
@@ -62,26 +67,11 @@ class ScreenshotRaid:
 
         return (tuple(points[0]), tuple(points[1]))
 
-    def _subset(self, rect):
+    def _subset(self, rect: Rect) -> numpy.array:
         return self._img[rect[0][1]:rect[1][1], rect[0][0]:rect[1][0]]
 
-    def get_timer(self):
-        return self.get_hatching_timer() if self.is_egg() else self.get_raid_timer()
-
-    def get_hatching_timer(self):
-        try:
-            if self._hatching_timer is not None:
-                return self._hatching_timer
-            else:
-                raise HatchingTimerUnreadable
-        except AttributeError:
-            pass
-        self._hatching_timer = None
-        self._hatching_timer = self._read_hatching_timer()
-        return self._hatching_timer
-
-    def _read_hatching_timer(self):
-        img = self._subset(self.get_hatching_timer_position())
+    def _read_hatching_timer(self) -> datetime.timedelta:
+        img = self._subset(self.hatching_timer_position)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         __, img = cv2.threshold(img, 210, 255, cv2.THRESH_BINARY_INV)
 
@@ -92,24 +82,13 @@ class ScreenshotRaid:
         result = re.search(r"([0-3]):([0-5][0-9]):([0-5][0-9])", text)
 
         try:
-            return (int(result.group(1)), int(result.group(2)), int(result.group(3)))
+            return datetime.timedelta(hours=int(result.group(1)), minutes=int(result.group(2)),
+                                      seconds=int(result.group(3)))
         except Exception:
             pass
         raise HatchingTimerUnreadable
 
-    def get_hatching_timer_position(self):
-        try:
-            if self._anchors["hatching_timer"] is not None:
-                return self._anchors["hatching_timer"]
-            else:
-                raise HatchingTimerNotFound
-        except (AttributeError, KeyError):
-            pass
-        self._anchors["hatching_timer"] = None
-        self._anchors["hatching_timer"] = self._find_hatching_timer()
-        return self._anchors["hatching_timer"]
-
-    def _find_hatching_timer(self):
+    def _find_hatching_timer(self) -> Rect:
         red_lower = numpy.array([150, 100, 230])
         red_upper = numpy.array([255, 130, 255])
 
@@ -134,20 +113,8 @@ class ScreenshotRaid:
             pass
         raise HatchingTimerNotFound
 
-    def get_raid_timer(self):
-        try:
-            if self._raid_timer is not None:
-                return self._raid_timer
-            else:
-                raise RaidTimerUnreadable
-        except AttributeError:
-            pass
-        self._raid_timer = None
-        self._raid_timer = self._read_raid_timer()
-        return self._raid_timer
-
-    def _read_raid_timer(self):
-        img = self._subset(self.get_raid_timer_position())
+    def _read_raid_timer(self) -> datetime.timedelta:
+        img = self._subset(self.raid_timer_position)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         __, img = cv2.threshold(img, 210, 255, cv2.THRESH_BINARY_INV)
 
@@ -158,24 +125,13 @@ class ScreenshotRaid:
         result = re.search(r"([0-3]):([0-5][0-9]):([0-5][0-9])", text)
 
         try:
-            return (int(result.group(1)), int(result.group(2)), int(result.group(3)))
+            return datetime.timedelta(hours=int(result.group(1)), minutes=int(result.group(2)),
+                                      seconds=int(result.group(3)))
         except Exception:
             pass
         raise RaidTimerUnreadable
 
-    def get_raid_timer_position(self):
-        try:
-            if self._anchors["raid_timer"] is not None:
-                return self._anchors["raid_timer"]
-            else:
-                raise RaidTimerNotFound
-        except (AttributeError, KeyError):
-            pass
-        self._anchors["raid_timer"] = None
-        self._anchors["raid_timer"] = self._find_raid_timer()
-        return self._anchors["raid_timer"]
-
-    def _find_raid_timer(self):
+    def _find_raid_timer(self) -> Rect:
         red_lower = numpy.array([-50, 175, 230])
         red_upper = numpy.array([50, 205, 255])
 
@@ -200,19 +156,7 @@ class ScreenshotRaid:
             pass
         raise RaidTimerNotFound
 
-    def get_gym_name(self):
-        try:
-            if self._gym_name is not None:
-                return self._gym_name
-            else:
-                raise GymNameNotFound
-        except AttributeError:
-            pass
-        self._gym_name = None
-        self._gym_name = self._find_gym_name()
-        return self._gym_name
-
-    def _find_gym_name(self):
+    def _find_gym_name(self) -> str:
         # TODO: improve find gym method
         try:
             x, y, r = self._anchors["gym_image"]
@@ -236,21 +180,9 @@ class ScreenshotRaid:
         return text
         # TODO: add the exception case
 
-    def get_level(self):
-        try:
-            if self._level is not None:
-                return self._level
-            else:
-                raise LevelNotFound
-        except AttributeError:
-            pass
-        self._level = None
-        self._level = self._find_level()
-        return self._level
-
-    def _find_level(self):
-        if self.is_egg():
-            ht_pos = self.get_hatching_timer_position()
+    def _find_level(self) -> int:
+        if self.is_egg:
+            ht_pos = self.hatching_timer_position
             sub = ((ht_pos[0][0] - 60, ht_pos[1][1] + 25), (ht_pos[1][0] + 60, ht_pos[1][1] + 95))
         else:
             sub = self._calc_subset(0.5, (0.10, 0.20))  # TODO: improve subset in raid for level
@@ -277,19 +209,7 @@ class ScreenshotRaid:
 
         raise LevelNotFound  # TODO: find a method to detect error
 
-    def get_time(self):
-        try:
-            if self._time is not None:
-                return self._time
-            else:
-                raise TimeNotFound
-        except AttributeError:
-            pass
-        self._time = None
-        self._time = self._find_time()
-        return self._time
-
-    def _find_time(self):
+    def _find_time(self) -> datetime.time:
         rx = re.compile(r"([0-2]?[0-9]):([0-5][0-9])")
         subs = [
             0.2,
@@ -339,7 +259,7 @@ class ScreenshotRaid:
 
         raise TimeNotFound
 
-    def _find_anchors(self):
+    def _find_anchors(self) -> None:
         ANCHORS = {
             "gym_image": [
                 ((0, 0.25), (40, 0.20)),
@@ -383,7 +303,166 @@ class ScreenshotRaid:
             self._anchors_available += 1
             self._anchors[a] = (x, y, r)
 
-    def _get_anchors_image(self):
+    @property
+    def hatching_timer_position(self) -> Rect:
+        try:
+            return self._anchors["hatching_timer"]
+        except KeyError:
+            pass
+        self._anchors["hatching_timer"] = None
+        try:
+            self._anchors["hatching_timer"] = self._find_hatching_timer()
+        except HatchingTimerNotFound:
+            pass
+        return self._anchors["hatching_timer"]
+
+    @property
+    def raid_timer_position(self) -> Rect:
+        try:
+            return self._anchors["raid_timer"]
+        except KeyError:
+            pass
+        self._anchors["raid_timer"] = None
+        try:
+            self._anchors["raid_timer"] = self._find_raid_timer()
+        except RaidTimerNotFound:
+            pass
+        return self._anchors["raid_timer"]
+
+    @property
+    def timer(self) -> datetime.timedelta:
+        return self.hatching_timer if self.is_egg else self.raid_timer
+
+    @property
+    def hatching_timer(self) -> datetime.timedelta:
+        try:
+            return self._hatching_timer
+        except AttributeError:
+            pass
+        self._hatching_timer = None
+        try:
+            self._hatching_timer = self._read_hatching_timer()
+        except HatchingTimerException:
+            pass
+        return self._hatching_timer
+
+    @property
+    def raid_timer(self) -> datetime.timedelta:
+        try:
+            return self._raid_timer
+        except AttributeError:
+            pass
+        self._raid_timer = None
+        try:
+            self._raid_timer = self._read_raid_timer()
+        except RaidTimerException:
+            pass
+        return self._raid_timer
+
+    @property
+    def gym_name(self) -> str:
+        try:
+            return self._gym_name
+        except AttributeError:
+            pass
+        self._gym_name = None
+        try:
+            self._gym_name = self._find_gym_name()
+        except GymNameNotFound:
+            pass
+        return self._gym_name
+
+    @property
+    def level(self) -> int:
+        try:
+            return self._level
+        except AttributeError:
+            pass
+        self._level = None
+        try:
+            self._level = self._find_level()
+        except LevelNotFound:
+            pass
+        return self._level
+
+    @property
+    def time(self) -> datetime.time:
+        try:
+            return self._time
+        except AttributeError:
+            pass
+        self._time = None
+        try:
+            self._time = self._find_time()
+        except TimeNotFound:
+            pass
+        return self._time
+
+    @property
+    def is_raid(self) -> bool:
+        try:
+            return True if self._anchors_available >= 4 else False
+        except AttributeError:
+            pass
+        self._find_anchors()
+        return True if self._anchors_available >= 4 else False
+
+    @property
+    def is_egg(self) -> bool:
+        return self.hatching_timer is not None
+
+    @property
+    def is_hatched(self) -> bool:
+        return self.hatching_timer is None
+
+    @property
+    def hatching(self) -> datetime.time:
+        try:
+            return (datetime.combine(datetime.date(1970, 1, 1), self.time) + self.hatching_timer).time()
+        except:
+            pass
+        try:
+            return (datetime.datetime.now() + self.hatching_timer).time()
+        except:
+            return None
+
+    @property
+    def end(self) -> datetime.time:
+        if self.is_hatched:
+            try:
+                time = datetime.combine(datetime.date(1970, 1, 1), self.time)
+            except:
+                time = datetime.datetime.now()
+            try:
+                return (time + self.raid_timer).time()
+            except:
+                return None
+        else:
+            try:
+                return (datetime.datetime.combine(datetime.date(1970, 1, 1), self.hatching)
+                        + datetime.timedelta(minutes=45)).time()
+            except:
+                return None
+
+    def to_raid(self) -> Raid:
+        if self.is_hatched:
+            return Raid(gym_name=self.gym_name, level=self.level, end=self.end, boss=None)
+        else:
+            return Raid(gym_name=self.gym_name, level=self.level, hatching=self.hatching, end=self.end)
+
+    def compute(self) -> None:
+        processes = [
+            Process(target=self._find_hours),
+            Process(target=self._find_hatching_timer)
+        ]
+
+        for p in processes:
+            p.start()
+
+        for p in processes:
+            p.join()
+
+    def _get_anchors_image(self) -> numpy.array:
         img = self._img.copy()
         for i in self._anchors.values():
             try:
@@ -396,33 +475,3 @@ class ScreenshotRaid:
                 pass
 
         return img
-
-    def is_raid(self):
-        try:
-            return True if self._anchors_available >= 4 else False
-        except AttributeError:
-            pass
-        self._find_anchors()
-        return True if self._anchors_available >= 4 else False
-
-    def is_egg(self):
-        try:
-            self.get_hatching_timer()
-            return True
-        except HatchingTimerException:
-            return False
-
-    def is_hatched(self):
-        return not self.is_egg()
-
-    def compute(self):
-        processes = [
-            Process(target=self._find_hours),
-            Process(target=self._find_hatching_timer)
-        ]
-
-        for p in processes:
-            p.start()
-
-        for p in processes:
-            p.join()

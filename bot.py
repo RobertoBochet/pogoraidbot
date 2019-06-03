@@ -2,7 +2,6 @@ import logging
 import random
 import re
 import string
-from datetime import timedelta, datetime
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, MessageHandler
@@ -46,43 +45,39 @@ class PoGORaidBot():
         screen = ScreenshotRaid(img)
 
         # Check if it's a screenshot of a raid
-        if not screen.is_raid():
+        if not screen.is_raid:
             return
 
         logging.info("It's a valid screen of a raid")
 
-        values = {
-            "raid_code": ''.join(random.choice(string.ascii_letters + string.digits) for i in range(8)),
-            "is_egg": screen.is_egg(),
-            "timer": screen.get_timer(),
-            "level": screen.get_level(),
-            "gym_name": screen.get_gym_name(),
-            "hatching": 0, "end": 0
-        }
+        raid = screen.to_raid()
 
-        if screen.is_egg():
-            timer = screen.get_hatching_timer()
-            hatching = datetime.now() + timedelta(hours=timer[0], minutes=timer[1], seconds=timer[2])
-            end = hatching + timedelta(minutes=45)
-            values["hatching"] = hatching.strftime("%H:%M")
-            values["end"] = end.strftime("%H:%M")
-        else:
-            timer = screen.get_raid_timer()
-            end = datetime.now() + timedelta(hours=timer[0], minutes=timer[1], seconds=timer[2])
-            values["end"] = end.strftime("%H:%M")
+        values = {}
+
+        values["raid_code"] = "".join(random.choice(string.ascii_letters + string.digits) for i in range(8))
+
+        values["level"] = ("\U00002B50" * raid.level).center(20 - round(1.5 * raid.level))
+        values["gym_name"] = raid.gym_name
+
+        values["hatching"] = raid.hatching.strftime("%H:%M") if raid.hatching is not None else "§§§"
+        values["end"] = raid.end.strftime("%H:%M") if raid.end is not None else "§§§"
+
+        values["aprx"] = "~" if screen.time is None else " "
 
         msg = []
-        msg.append("{gym_name}")
-        if screen.is_egg():
-            msg.append("`Level:     {level}`")
-            msg.append("`Hatching: ~{hatching}`")
-        else:
-            msg.append("`Boss:      # {level}`")
-        msg.append("`End:      ~{end}`")
-        msg.append("`[{raid_code}]`")
+        if raid.is_hatched:
+            msg.append("<b>Boss</b>")
 
-        msg = "\n".join(msg)
-        update.message.reply_markdown(msg.format(**values), quote=True)
+        msg.append("<code>{level}</code>")
+        msg.append("<i>{gym_name}</i>")
+
+        if raid.is_egg:
+            msg.append("<pre>Hatching:     {aprx}{hatching}</pre>")
+
+        msg.append("<pre>End:          {aprx}{end}</pre>")
+        msg.append("<code>[{raid_code}]</code>")
+
+        update.message.reply_html("\n".join(msg).format(**values), quote=True)
 
         logging.info("A reply was sent")
 
