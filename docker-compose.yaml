@@ -1,0 +1,15 @@
+version: "3"
+
+services:
+  service:
+    build: ./service
+    restart: always
+    environment:
+      - BOT_TOKEN=bot_token
+      - REDIS_HOST=redis
+      - REDIS_PORT=3379
+    depends_on:
+      - redis
+  redis:
+    image: redis:5-alpine
+    restart: always
