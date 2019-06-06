@@ -1,17 +1,15 @@
 #!/usr/bin/env python3
 import logging
 import os
-import sys
 
 from bot import PoGORaidBot
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
-    try:
-        bot = PoGORaidBot(os.environ["BOT_TOKEN"])
-    except KeyError:
-        logging.fatal("Bot token not found")
-        sys.exit(1)
+    env = {"token": "BOT_TOKEN", "host": "REDIS_HOST", "port": "REDIS_PORT"}
+    env = {k: os.environ[env[k]] for k in env if env[k] in os.environ}
+
+    bot = PoGORaidBot(**env)
 
     bot.listen()

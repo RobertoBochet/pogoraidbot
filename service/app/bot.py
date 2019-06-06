@@ -1,21 +1,25 @@
+import datetime
 import logging
-import random
+import pickle
 import re
-import string
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Updater, MessageHandler
+import redis
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
+from telegram.ext import Updater, MessageHandler, CallbackQueryHandler
 from telegram.ext.filters import Filters
 
 from ScreenshotRaid import ScreenshotRaid
 
 
 class PoGORaidBot():
-    def __init__(self, token):
-        self._token = token
+    def __init__(self, token, host="127.0.0.1", port=6379):
+        # Init and test redis connection
+        self._raids_db = redis.Redis(host=host, port=port, db=0)
+        self._participants_db = redis.Redis(host=host, port=port, db=1)
+        self._raids_db.ping()
 
         # Init the bot
-        self._updater = Updater(self._token)
+        self._updater = Updater(token)
 
         # Get the id of the bot
         self._id = self._updater.bot.get_me().id
@@ -26,7 +30,9 @@ class PoGORaidBot():
             MessageHandler(Filters.photo, self._screenshot_handler))
         # Set the handler to set the hangout
         self._updater.dispatcher.add_handler(
-            MessageHandler(Filters.reply & Filters.regex(r"[0-2]?[0-9][:\.,][0-5]?[0-9]"), self._reply_handler))
+            MessageHandler(Filters.reply & Filters.regex(r"[0-2]?[0-9][:\.,][0-5]?[0-9]"), self._set_hangout_handler))
+        # Set the handler for the buttons
+        self._updater.dispatcher.add_handler(CallbackQueryHandler(self._buttons_handlers))
 
     def listen(self):
         # Begin to listen
@@ -50,57 +56,60 @@ class PoGORaidBot():
 
         logging.info("It's a valid screen of a raid")
 
+        # Get the raid dataclass
         raid = screen.to_raid()
 
-        values = {}
+        # Save the raid in the db
+        self._raids_db.setex(raid.code, 60 * 60 * 6, pickle.dumps(raid))
 
-        values["raid_code"] = "".join(random.choice(string.ascii_letters + string.digits) for i in range(8))
-
-        values["level"] = ("\U00002B50" * raid.level).center(20 - round(1.5 * raid.level))
-        values["gym_name"] = raid.gym_name
-
-        values["hatching"] = raid.hatching.strftime("%H:%M") if raid.hatching is not None else "§§§"
-        values["end"] = raid.end.strftime("%H:%M") if raid.end is not None else "§§§"
-
-        values["aprx"] = "~" if screen.time is None else " "
-
-        msg = []
-        if raid.is_hatched:
-            msg.append("<b>Boss</b>")
-
-        msg.append("<code>{level}</code>")
-        msg.append("<i>{gym_name}</i>")
-
-        if raid.is_egg:
-            msg.append("<pre>Hatching:     {aprx}{hatching}</pre>")
-
-        msg.append("<pre>End:          {aprx}{end}</pre>")
-        msg.append("<code>[{raid_code}]</code>")
-
-        update.message.reply_html("\n".join(msg).format(**values), quote=True)
+        update.message.reply_html(raid.to_msg(), quote=True)
 
         logging.info("A reply was sent")
 
-    def _reply_handler(self, bot, update):
+    def _set_hangout_handler(self, bot, update):
         # Check if the reply is for the bot
         if update.message.reply_to_message.from_user.id != self._id:
             return
 
+        logging.info("A reply to bot message was come")
+
         try:
-            code = re.search(r"\[([a-zA-Z0-1]{8})\]", update.message.reply_to_message.text).group(1)
+            # Search the code in the bot message
+            code = re.search(r"\[([a-zA-Z0-9]{8})\]", update.message.reply_to_message.text).group(1)
+            # Try to retrieve the raid information
+            raid = pickle.loads(self._raids_db.get(code))
         except:
+            logging.warning("A invalid reply was come")
             return
 
-        reply_markup = InlineKeyboardMarkup([[
-            InlineKeyboardButton("\U0001F42F", callback_data='1'),
-            InlineKeyboardButton("\U0001F985", callback_data='2'),
-            InlineKeyboardButton("\U0001F999", callback_data='2')
-        ]])
+        # Find the new hangout
+        result = re.search(r"([0-2]?[0-9])[:\.,]([0-5]?[0-9])", update.message.text)
+        # Set new hangout
+        raid.hangout = datetime.time(int(result.group(1)), int(result.group(2)))
 
-        update.message.reply_text("""
-Raid code: {raid_code} 
-Is egg: {is_egg}
-Gym: {gym_name}
-Timer: {timer}
-Level: {level}
-        """, reply_markup=reply_markup)
+        # TODO: improve this check method
+        # Check if the old message was pinned
+        try:
+            pinned = self._updater.bot.get_chat(update.message.chat.id).pinned_message.message_id \
+                     == update.message.reply_to_message.message_id
+        except:
+            pinned = False
+
+        # Delete the old bot message and the reply
+        self._updater.bot.delete_message(update.message.chat.id, update.message.message_id)
+        self._updater.bot.delete_message(update.message.chat.id, update.message.reply_to_message.message_id)
+
+        # Send new message
+        new_msg = update.message.chat.send_message(raid.to_msg(), parse_mode=ParseMode.HTML,
+                                                   reply_markup=InlineKeyboardMarkup([[
+                                                       InlineKeyboardButton("\U0001F42F", callback_data='1'),
+                                                       InlineKeyboardButton("\U0001F985", callback_data='2'),
+                                                       InlineKeyboardButton("\U0001F999", callback_data='2')
+                                                   ]]))
+
+        # Re-pin the new message
+        if pinned:
+            bot.pin_chat_message(update.message.chat.id, new_msg.message_id, disable_notification=True)
+
+    def _buttons_handlers(self, bot, update):
+        pass
