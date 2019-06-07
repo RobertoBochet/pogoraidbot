@@ -168,7 +168,7 @@ class ScreenshotRaid:
         img = self._subset(sub)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         __, img = cv2.threshold(img, 220, 255, cv2.THRESH_BINARY_INV)
-        text = pytesseract.image_to_string(img, config=('-l ita --oem 1 --psm 3'))
+        text = pytesseract.image_to_string(img, config=('--oem 1 --psm 3'))
 
         text = text.rstrip().replace('\n', ' ')
         text = " ".join(text.split())
@@ -446,9 +446,9 @@ class ScreenshotRaid:
 
     def to_raid(self) -> Raid:
         if self.is_hatched:
-            return Raid(gym_name=self.gym_name, level=self.level, end=self.end, boss=None)
+            return Raid(gym_name=self.gym_name, level=self.level, end=self.end, boss=None, is_hatched=True)
         else:
-            return Raid(gym_name=self.gym_name, level=self.level, hatching=self.hatching, end=self.end)
+            return Raid(gym_name=self.gym_name, level=self.level, hatching=self.hatching, end=self.end, is_hatched=False)
 
     def compute(self) -> None:
         processes = [
