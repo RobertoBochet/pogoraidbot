@@ -7,7 +7,7 @@ import sys
 
 import cv2
 
-from ScreenshotRaid import ScreenshotRaid
+from screenshot import ScreenshotRaid
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)

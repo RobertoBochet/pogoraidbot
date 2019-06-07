@@ -8,7 +8,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 from telegram.ext import Updater, MessageHandler, CallbackQueryHandler
 from telegram.ext.filters import Filters
 
-from ScreenshotRaid import ScreenshotRaid
+from screenshot import ScreenshotRaid
 
 
 class PoGORaidBot():
