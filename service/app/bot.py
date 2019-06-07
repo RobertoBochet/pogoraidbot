@@ -32,13 +32,27 @@ class PoGORaidBot():
         self._updater.dispatcher.add_handler(
             MessageHandler(Filters.reply & Filters.regex(r"[0-2]?[0-9][:\.,][0-5]?[0-9]"), self._set_hangout_handler))
         # Set the handler for the buttons
-        self._updater.dispatcher.add_handler(CallbackQueryHandler(self._buttons_handlers))
+        self._updater.dispatcher.add_handler(CallbackQueryHandler(self._buttons_handler))
+        # Set the handler for the pinned message notify
+        self._updater.dispatcher.add_handler(MessageHandler(Filters.status_update.pinned_message, self._pinned_handler))
+        # Set the handler for the errors
+        self._updater.dispatcher.add_error_handler(self._error_handler)
 
     def listen(self):
         # Begin to listen
         self._updater.start_polling()
         # Wait
         self._updater.idle()
+
+    def _error_handler(self, bot, update, error):
+        logging.warning('Update "{}" caused error "{}"'.format(update, error))
+
+    def _pinned_handler(self, bot, update):
+        # Check if the pin is caused by the bot
+        if update.message.from_user.id != self._id:
+            return
+        # Remove the notify message
+        bot.delete_message(update.message.chat.id, update.message.message_id)
 
     def _screenshot_handler(self, bot, update):
         logging.info("New image is arrived from {} by {}"
@@ -67,15 +81,16 @@ class PoGORaidBot():
         logging.info("A reply was sent")
 
     def _set_hangout_handler(self, bot, update):
+        message = update.message
         # Check if the reply is for the bot
-        if update.message.reply_to_message.from_user.id != self._id:
+        if message.reply_to_message.from_user.id != self._id:
             return
 
         logging.info("A reply to bot message was come")
 
         try:
             # Search the code in the bot message
-            code = re.search(r"\[([a-zA-Z0-9]{8})\]", update.message.reply_to_message.text).group(1)
+            code = re.search(r"\[([a-zA-Z0-9]{8})\]", message.reply_to_message.text).group(1)
             # Try to retrieve the raid information
             raid = pickle.loads(self._raids_db.get(code))
         except:
@@ -83,33 +98,75 @@ class PoGORaidBot():
             return
 
         # Find the new hangout
-        result = re.search(r"([0-2]?[0-9])[:\.,]([0-5]?[0-9])", update.message.text)
+        result = re.search(r"([0-2]?[0-9])[:\.,]([0-5]?[0-9])", message.text)
         # Set new hangout
         raid.hangout = datetime.time(int(result.group(1)), int(result.group(2)))
+
+        # Save the raid in the db
+        self._raids_db.setex(raid.code, 60 * 60 * 6, pickle.dumps(raid))
+
+        # Updates the message
+        self._repost(raid, message)
+
+    def _buttons_handler(self, bot, update):
+        clb = update.callback_query
+
+        try:
+            # Validate the data
+            result = re.match(r"([a-zA-Z0-9]{8})\:([afr])", clb.data)
+            # Try to retrieve the raid information
+            raid = pickle.loads(self._raids_db.get(result.group(1)))
+            # Get operation
+            op = result.group(2)
+        except:
+            logging.warning("A invalid callback query was come")
+            return
+
+        logging.info("A callback query was come")
+
+        # Edit list of participants
+        if op == "a":
+            raid.add_participant(clb.from_user.id, clb.from_user.username)
+        elif op == "f":
+            raid.add_flyer(clb.from_user.id, clb.from_user.username)
+        else:
+            raid.remove_participant(clb.from_user.id)
+
+        # Save the raid in the db
+        self._raids_db.setex(raid.code, 60 * 60 * 6, pickle.dumps(raid))
+
+        # Updates the message
+        self._repost(raid, clb.message)
+
+    def _repost(self, raid, message):
+        if message.from_user.id != self._id:
+            user_message = message
+            message = message.reply_to_message
 
         # TODO: improve this check method
         # Check if the old message was pinned
         try:
-            pinned = self._updater.bot.get_chat(update.message.chat.id).pinned_message.message_id \
-                     == update.message.reply_to_message.message_id
+            pinned = self._updater.bot.get_chat(message.chat.id).pinned_message.message_id \
+                     == message.message_id
         except:
             pinned = False
 
-        # Delete the old bot message and the reply
-        self._updater.bot.delete_message(update.message.chat.id, update.message.message_id)
-        self._updater.bot.delete_message(update.message.chat.id, update.message.reply_to_message.message_id)
+        # Delete the old bot message and the reply if it exists
+        self._updater.bot.delete_message(message.chat.id, message.message_id)
+        try:
+            self._updater.bot.delete_message(message.chat.id, user_message.message_id)
+        except:
+            pass
 
         # Send new message
-        new_msg = update.message.chat.send_message(raid.to_msg(), parse_mode=ParseMode.HTML,
-                                                   reply_markup=InlineKeyboardMarkup([[
-                                                       InlineKeyboardButton("\U0001F42F", callback_data='1'),
-                                                       InlineKeyboardButton("\U0001F985", callback_data='2'),
-                                                       InlineKeyboardButton("\U0001F999", callback_data='2')
-                                                   ]]))
+        new_msg = message.chat.send_message(raid.to_msg(),
+                                            parse_mode=ParseMode.HTML,
+                                            reply_markup=InlineKeyboardMarkup([[
+                                                InlineKeyboardButton("\U0001F42F", callback_data=raid.code + ":a"),
+                                                InlineKeyboardButton("\U0001F985", callback_data=raid.code + ":f"),
+                                                InlineKeyboardButton("\U0001F999", callback_data=raid.code + ":r")
+                                            ]]))
 
         # Re-pin the new message
         if pinned:
-            bot.pin_chat_message(update.message.chat.id, new_msg.message_id, disable_notification=True)
-
-    def _buttons_handlers(self, bot, update):
-        pass
+            self._updater.bot.pin_chat_message(message.chat.id, new_msg.message_id, disable_notification=True)

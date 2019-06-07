@@ -1,7 +1,7 @@
 import random
 import string
 from dataclasses import dataclass, field
-from typing import List
+from typing import Dict
 
 
 @dataclass
@@ -15,7 +15,7 @@ class Raid:
     hangout: any = None
     boss: str = None
     aprx_time: bool = False
-    participants: List = field(default_factory=lambda: [])
+    participants: Dict = field(default_factory=lambda: {})
 
     @property
     def is_hatched(self) -> bool:
@@ -25,9 +25,35 @@ class Raid:
     def is_egg(self) -> bool:
         return self.hatching is not None
 
+    def add_participant(self, id: int, name: str):
+        print(self.participants)
+        if id in self.participants:
+            print("aaa")
+            v = self.participants[id]
+            self.participants[id] = (name, "l", v[2] + 1)
+        else:
+            self.participants[id] = (name, "l", 1)
+
+    def add_flyer(self, id: int, name: str):
+        if id in self.participants:
+            v = self.participants[id]
+            self.participants[id] = (name, "f", v[2] + 1)
+        else:
+            self.participants[id] = (name, "f", 1)
+
+    def remove_participant(self, id: int) -> bool:
+        if id in self.participants:
+            v = self.participants[id]
+            if v[2] > 1:
+                self.participants[id] = (v[0], v[1], v[2] - 1)
+            else:
+                del self.participants[id]
+            return True
+        return False
+
     def to_msg(self) -> str:
 
-        level = ("\U00002B50" * self.level).center(20 - round(1.5 * self.level))
+        level = ("\U00002B50" * self.level)
 
         hatching = self.hatching.strftime("%H:%M")
         end = self.end.strftime("%H:%M")
@@ -56,6 +82,10 @@ class Raid:
 
         if len(self.participants) is not 0:
             msg.append("<b>--------------</b>")
-            pass
+            for p in self.participants:
+                v = self.participants[p]
+                i = "" if v[1] == "l" else "\U0001F6E9"
+                n = "" if v[2] == 1 else "+{}".format(v[2])
+                msg.append("{}@{} {}".format(i, v[0], n))
 
         return "\n".join(msg)
