@@ -1,18 +1,21 @@
+from __future__ import annotations
+
 import datetime
 import logging
 import pickle
 import re
 
 import redis
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode, Update, TelegramError, Bot, Message
 from telegram.ext import Updater, MessageHandler, CallbackQueryHandler
 from telegram.ext.filters import Filters
 
+from raid import Raid
 from screenshot import ScreenshotRaid
 
 
 class PoGORaidBot():
-    def __init__(self, token, host="127.0.0.1", port=6379):
+    def __init__(self, token: str, host: str = "127.0.0.1", port: int = 6379):
         self.logger = logging.getLogger(__name__)
 
         # Init and test redis connection
@@ -42,25 +45,27 @@ class PoGORaidBot():
 
         self.logger.info("Bot ready")
 
-    def listen(self):
+    def listen(self) -> None:
+        self.logger.info("Start listening")
+
         # Begin to listen
         self._updater.start_polling()
         # Wait
         self._updater.idle()
 
-    def _error_handler(self, bot, update, error):
+    def _error_handler(self, bot: Bot, update: Update, error: TelegramError) -> None:
         self.logger.warning('Update "{}" caused error "{}"'.format(update, error))
 
-    def _pinned_handler(self, bot, update):
+    def _pinned_handler(self, bot: Bot, update: Update) -> None:
         # Check if the pin is caused by the bot
         if update.message.from_user.id != self._id:
             return
         # Remove the notify message
         bot.delete_message(update.message.chat.id, update.message.message_id)
 
-    def _screenshot_handler(self, bot, update):
+    def _screenshot_handler(self, bot: Bot, update: Update) -> None:
         self.logger.info("New image is arrived from {} by {}"
-                     .format(update.effective_chat.title, update.effective_user.username))
+                         .format(update.effective_chat.title, update.effective_user.username))
 
         # Get the highest resolution image
         img = update.message.photo[-1].get_file().download_as_bytearray()
@@ -77,7 +82,7 @@ class PoGORaidBot():
         # Get the raid dataclass
         raid = screen.to_raid()
 
-        logging.debug(raid)
+        self.logger.debug(raid)
 
         # Save the raid in the db
         self._raids_db.setex(raid.code, 60 * 60 * 6, pickle.dumps(raid))
@@ -86,7 +91,7 @@ class PoGORaidBot():
 
         self.logger.info("A reply was sent")
 
-    def _set_hangout_handler(self, bot, update):
+    def _set_hangout_handler(self, bot: Bot, update: Update) -> None:
         message = update.message
         # Check if the reply is for the bot
         if message.reply_to_message.from_user.id != self._id:
@@ -108,13 +113,15 @@ class PoGORaidBot():
         # Set new hangout
         raid.hangout = datetime.time(int(result.group(1)), int(result.group(2)))
 
+        self.logger.debug(raid)
+
         # Save the raid in the db
         self._raids_db.setex(raid.code, 60 * 60 * 6, pickle.dumps(raid))
 
         # Updates the message
         self._repost(raid, message)
 
-    def _buttons_handler(self, bot, update):
+    def _buttons_handler(self, bot: Bot, update: Update) -> None:
         clb = update.callback_query
 
         try:
@@ -138,13 +145,15 @@ class PoGORaidBot():
         else:
             raid.remove_participant(clb.from_user.id)
 
+        self.logger.debug(raid)
+
         # Save the raid in the db
         self._raids_db.setex(raid.code, 60 * 60 * 6, pickle.dumps(raid))
 
         # Updates the message
         self._repost(raid, clb.message)
 
-    def _repost(self, raid, message):
+    def _repost(self, raid: Raid, message: Message) -> None:
         if message.from_user.id != self._id:
             user_message = message
             message = message.reply_to_message
