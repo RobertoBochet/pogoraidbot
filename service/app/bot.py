@@ -73,6 +73,8 @@ class PoGORaidBot():
         # Get the raid dataclass
         raid = screen.to_raid()
 
+        logging.debug(raid)
+
         # Save the raid in the db
         self._raids_db.setex(raid.code, 60 * 60 * 6, pickle.dumps(raid))
 
@@ -86,16 +88,16 @@ class PoGORaidBot():
         if message.reply_to_message.from_user.id != self._id:
             return
 
-        logging.info("A reply to bot message was come")
-
         try:
             # Search the code in the bot message
             code = re.search(r"\[([a-zA-Z0-9]{8})\]", message.reply_to_message.text).group(1)
             # Try to retrieve the raid information
             raid = pickle.loads(self._raids_db.get(code))
         except:
-            logging.warning("A invalid reply was come")
+            logging.warning("A invalid to bot message reply was come")
             return
+
+        logging.info("A reply to bot message was come")
 
         # Find the new hangout
         result = re.search(r"([0-2]?[0-9])[:\.,]([0-5]?[0-9])", message.text)
