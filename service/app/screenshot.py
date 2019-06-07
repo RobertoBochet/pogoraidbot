@@ -3,7 +3,7 @@ import logging
 import re
 from functools import reduce
 from multiprocessing import Process
-from typing import Tuple
+from typing import Tuple, Union
 
 import cv2
 import numpy
@@ -16,7 +16,7 @@ Rect = Tuple[Tuple[int, int], Tuple[int, int]]
 
 
 class ScreenshotRaid:
-    def __init__(self, img):
+    def __init__(self, img: Union[numpy.ndarray, bytearray]):
         if isinstance(img, numpy.ndarray):
             self._img = img
         elif isinstance(img, bytearray):
@@ -67,7 +67,7 @@ class ScreenshotRaid:
 
         return (tuple(points[0]), tuple(points[1]))
 
-    def _subset(self, rect: Rect) -> numpy.array:
+    def _subset(self, rect: Rect) -> numpy.ndarray:
         return self._img[rect[0][1]:rect[1][1], rect[0][0]:rect[1][0]]
 
     def _read_hatching_timer(self) -> datetime.timedelta:
@@ -462,7 +462,7 @@ class ScreenshotRaid:
         for p in processes:
             p.join()
 
-    def _get_anchors_image(self) -> numpy.array:
+    def _get_anchors_image(self) -> numpy.ndarray:
         img = self._img.copy()
         for i in self._anchors.values():
             try:
