@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import datetime
 import random
 import string
 from dataclasses import dataclass, field
@@ -11,32 +14,33 @@ class Raid:
     gym_name: str = None
     level: int = None
     is_hatched: bool = False
-    end: any = None
-    hatching: any = None
-    hangout: any = None
+    end: datetime.time = None
+    hatching: datetime.time = None
+    hangout: datetime.time = None
     boss: str = None
     is_aprx_time: bool = False
-    participants: Dict = field(default_factory=lambda: {})
+    participants: Dict[int, Participant] = field(default_factory=lambda: {})
 
     def add_participant(self, id: int, name: str) -> None:
         if id in self.participants:
-            v = self.participants[id]
-            self.participants[id] = (name, "l", v[2] + 1)
+            self.participants[id].name = name
+            self.participants[id].number += 1
+            self.participants[id].is_flyer = False
         else:
-            self.participants[id] = (name, "l", 1)
+            self.participants[id] = Participant(id, name)
 
     def add_flyer(self, id: int, name: str) -> None:
         if id in self.participants:
-            v = self.participants[id]
-            self.participants[id] = (name, "f", v[2] + 1)
+            self.participants[id].name = name
+            self.participants[id].number += 1
+            self.participants[id].is_flyer = True
         else:
-            self.participants[id] = (name, "f", 1)
+            self.participants[id] = Participant(id, name, is_flyer=True)
 
     def remove_participant(self, id: int) -> bool:
         if id in self.participants:
-            v = self.participants[id]
-            if v[2] > 1:
-                self.participants[id] = (v[0], v[1], v[2] - 1)
+            if self.participants[id].number > 1:
+                self.participants[id].number -= 1
             else:
                 del self.participants[id]
             return True
@@ -69,8 +73,17 @@ class Raid:
             msg.append("<b>--------------</b>")
             for p in self.participants:
                 v = self.participants[p]
-                i = "" if v[1] == "l" else "\U0001F6E9"
-                n = "" if v[2] == 1 else "+{}".format(v[2])
-                msg.append("{}@{} {}".format(i, v[0], n))
+                msg.append("{}@{} {}".format(
+                    "\U0001F6E9" if v.is_flyer else "",
+                    v.name,
+                    "" if v.number == 1 else "+{}".format(v.number)))
 
         return "\n".join(msg)
+
+
+@dataclass
+class Participant:
+    id: int
+    name: str
+    is_flyer: bool = False
+    number: int = 1
