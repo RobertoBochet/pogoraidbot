@@ -13,6 +13,8 @@ from ScreenshotRaid import ScreenshotRaid
 
 class PoGORaidBot():
     def __init__(self, token, host="127.0.0.1", port=6379):
+        self.logger = logging.getLogger(__name__)
+
         # Init and test redis connection
         self._raids_db = redis.Redis(host=host, port=port, db=0)
         self._participants_db = redis.Redis(host=host, port=port, db=1)
@@ -38,6 +40,8 @@ class PoGORaidBot():
         # Set the handler for the errors
         self._updater.dispatcher.add_error_handler(self._error_handler)
 
+        self.logger.info("Bot ready")
+
     def listen(self):
         # Begin to listen
         self._updater.start_polling()
@@ -45,7 +49,7 @@ class PoGORaidBot():
         self._updater.idle()
 
     def _error_handler(self, bot, update, error):
-        logging.warning('Update "{}" caused error "{}"'.format(update, error))
+        self.logger.warning('Update "{}" caused error "{}"'.format(update, error))
 
     def _pinned_handler(self, bot, update):
         # Check if the pin is caused by the bot
@@ -55,7 +59,7 @@ class PoGORaidBot():
         bot.delete_message(update.message.chat.id, update.message.message_id)
 
     def _screenshot_handler(self, bot, update):
-        logging.info("New image is arrived from {} by {}"
+        self.logger.info("New image is arrived from {} by {}"
                      .format(update.effective_chat.title, update.effective_user.username))
 
         # Get the highest resolution image
@@ -68,7 +72,7 @@ class PoGORaidBot():
         if not screen.is_raid:
             return
 
-        logging.info("It's a valid screen of a raid")
+        self.logger.info("It's a valid screen of a raid")
 
         # Get the raid dataclass
         raid = screen.to_raid()
@@ -80,7 +84,7 @@ class PoGORaidBot():
 
         update.message.reply_html(raid.to_msg(), quote=True)
 
-        logging.info("A reply was sent")
+        self.logger.info("A reply was sent")
 
     def _set_hangout_handler(self, bot, update):
         message = update.message
@@ -94,10 +98,10 @@ class PoGORaidBot():
             # Try to retrieve the raid information
             raid = pickle.loads(self._raids_db.get(code))
         except:
-            logging.warning("A invalid to bot message reply was come")
+            self.logger.warning("A invalid to bot message reply was come")
             return
 
-        logging.info("A reply to bot message was come")
+        self.logger.info("A reply to bot message was come")
 
         # Find the new hangout
         result = re.search(r"([0-2]?[0-9])[:\.,]([0-5]?[0-9])", message.text)
@@ -121,10 +125,10 @@ class PoGORaidBot():
             # Get operation
             op = result.group(2)
         except:
-            logging.warning("A invalid callback query was come")
+            self.logger.warning("A invalid callback query was come")
             return
 
-        logging.info("A callback query was come")
+        self.logger.info("A callback query was come")
 
         # Edit list of participants
         if op == "a":
