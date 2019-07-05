@@ -24,6 +24,8 @@ class ScreenshotRaid:
         else:
             raise Exception  # TODO: create adhoc exception
 
+        self._image_sections = {}
+
         self._size = (len(self._img[0]), len(self._img))
 
         self._find_anchors()
@@ -75,7 +77,7 @@ class ScreenshotRaid:
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         __, img = cv2.threshold(img, 210, 255, cv2.THRESH_BINARY_INV)
 
-        self._hatching_timer_img = img  # TODO: remove debug
+        self._image_sections["hatching_timer"] = img  # TODO: remove debug
 
         text = pytesseract.image_to_string(img, config=('--oem 1 --psm 3'))
 
@@ -100,7 +102,7 @@ class ScreenshotRaid:
 
         mask = cv2.inRange(img, red_lower, red_upper)
 
-        self._hatching_timer_img = mask  # TODO: remove debug
+        self._image_sections["hatching_timer_mask"] = mask  # TODO: remove debug
 
         try:
             contours, _ = cv2.findContours(mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
@@ -118,7 +120,7 @@ class ScreenshotRaid:
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         __, img = cv2.threshold(img, 210, 255, cv2.THRESH_BINARY_INV)
 
-        self._raid_timer_img = img  # TODO: remove debug
+        self._image_sections["raid_timer"] = img  # TODO: remove debug
 
         text = pytesseract.image_to_string(img, config=('--oem 1 --psm 3'))
 
@@ -143,7 +145,7 @@ class ScreenshotRaid:
 
         mask = cv2.inRange(img, red_lower, red_upper)
 
-        self._raid_timer_img = mask  # TODO: remove debug
+        self._image_sections["raid_timer_mask"] = mask  # TODO: remove debug
 
         try:
             contours, _ = cv2.findContours(mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
@@ -175,7 +177,7 @@ class ScreenshotRaid:
 
         logging.debug(text)
 
-        self._gym_name_img = img
+        self._image_sections["gym_name"] = img  # TODO: remove debug
 
         return text
         # TODO: add the exception case
@@ -203,7 +205,7 @@ class ScreenshotRaid:
         img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
         img = cv2.drawContours(img, contours, -1, (255, 0, 0), 2)
 
-        self._level_img = img
+        self._image_sections["level"] = img  # TODO: remove debug
 
         return len(contours)
 
@@ -242,15 +244,13 @@ class ScreenshotRaid:
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             img = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 11, 2)
 
-            self._time_img = img
+            self._image_sections["time"] = img  # TODO: remove debug
 
             text = pytesseract.image_to_string(img, config=('--oem 1 --psm 3'))
 
             logging.debug(text)
 
             result = re.search(r"([0-2]?[0-9]):([0-5][0-9])", text)
-
-            self._time_img = img
 
             try:
                 return (int(result.group(1)), int(result.group(2)))
@@ -448,7 +448,8 @@ class ScreenshotRaid:
         if self.is_hatched:
             return Raid(gym_name=self.gym_name, level=self.level, end=self.end, boss=None, is_hatched=True)
         else:
-            return Raid(gym_name=self.gym_name, level=self.level, hatching=self.hatching, end=self.end, is_hatched=False)
+            return Raid(gym_name=self.gym_name, level=self.level, hatching=self.hatching, end=self.end,
+                        is_hatched=False)
 
     def compute(self) -> None:
         processes = [
