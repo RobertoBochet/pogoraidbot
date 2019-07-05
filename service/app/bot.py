@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import datetime
 import logging
+import os
 import pickle
 import re
 
+import cv2
 import redis
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode, Update, TelegramError, Bot, Message
 from telegram.ext import Updater, MessageHandler, CallbackQueryHandler
@@ -15,13 +17,16 @@ from screenshot import ScreenshotRaid
 
 
 class PoGORaidBot():
-    def __init__(self, token: str, host: str = "127.0.0.1", port: int = 6379):
+    def __init__(self, token: str, host: str = "127.0.0.1", port: int = 6379, debug_folder: str = None):
         self.logger = logging.getLogger(__name__)
 
         # Init and test redis connection
         self._raids_db = redis.Redis(host=host, port=port, db=0)
         self._participants_db = redis.Redis(host=host, port=port, db=1)
         self._raids_db.ping()
+
+        # Save debug folder
+        self._debug_folder = debug_folder
 
         # Init the bot
         self._updater = Updater(token)
@@ -86,6 +91,15 @@ class PoGORaidBot():
 
         # Save the raid in the db
         self._raids_db.setex(raid.code, 60 * 60 * 6, pickle.dumps(raid))
+
+        # Save sections of image if it is required
+        try:
+            if self._debug_folder is not None:
+                for s in screen._image_sections:
+                    cv2.imwrite(os.path.join(self._debug_folder, "{}-{}.png".format(raid.code, s)),
+                                screen._image_sections[s])
+        except Exception as e:
+            self.logger.warning("Failed to save sections of image")
 
         update.message.reply_html(raid.to_msg(), quote=True)
 
