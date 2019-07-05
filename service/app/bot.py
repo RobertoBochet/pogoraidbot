@@ -95,6 +95,8 @@ class PoGORaidBot():
         # Save sections of image if it is required
         try:
             if self._debug_folder is not None:
+                cv2.imwrite(os.path.join(self._debug_folder, "{}-anchors.png".format(raid.code)),
+                            screen._get_anchors_image())
                 for s in screen._image_sections:
                     cv2.imwrite(os.path.join(self._debug_folder, "{}-{}.png".format(raid.code, s)),
                                 screen._image_sections[s])
