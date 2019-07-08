@@ -17,6 +17,8 @@ Rect = Tuple[Tuple[int, int], Tuple[int, int]]
 
 class ScreenshotRaid:
     def __init__(self, img: Union[numpy.ndarray, bytearray]):
+        self.logger = logging.getLogger(__name__)
+
         if isinstance(img, numpy.ndarray):
             self._img = img
         elif isinstance(img, bytearray):
@@ -81,6 +83,8 @@ class ScreenshotRaid:
 
         text = pytesseract.image_to_string(img, config=('--oem 1 --psm 3'))
 
+        self.logger.debug("raw hatching_timer «{}»".format(text))
+
         result = re.search(r"([0-3]):([0-5][0-9]):([0-5][0-9])", text)
 
         try:
@@ -123,6 +127,8 @@ class ScreenshotRaid:
         self._image_sections["raid_timer"] = img  # TODO: remove debug
 
         text = pytesseract.image_to_string(img, config=('--oem 1 --psm 3'))
+
+        self.logger.debug("raw raid_timer «{}»".format(text))
 
         result = re.search(r"([0-3]):([0-5][0-9]):([0-5][0-9])", text)
 
@@ -171,6 +177,8 @@ class ScreenshotRaid:
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         __, img = cv2.threshold(img, 220, 255, cv2.THRESH_BINARY_INV)
         text = pytesseract.image_to_string(img, config=('--oem 1 --psm 3'))
+
+        self.logger.debug("raw gym_name «{}»".format(text))
 
         text = text.rstrip().replace('\n', ' ')
         text = " ".join(text.split())

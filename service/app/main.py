@@ -5,9 +5,11 @@ import os
 from bot import PoGORaidBot
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG,format="%(levelname)s|%(name)s|%(message)s")
+    logging.basicConfig(level=logging.WARNING,format="%(levelname)s|%(name)s|%(message)s")
 
     # Set warning logging level for the module
+    logging.getLogger("bot").setLevel(logging.DEBUG)
+    logging.getLogger("screenshot").setLevel(logging.DEBUG)
     logging.getLogger("telegram").setLevel(logging.WARNING)
     logging.getLogger("JobQueue").setLevel(logging.WARNING)
 
