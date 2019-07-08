@@ -67,14 +67,14 @@ class ScreenshotRaid:
                         else:
                             points[j][i] = v
 
-        # logging.debug("request {} calc {} size {}".format(subs, (tuple(points[0]), tuple(points[1])), self._size))
-
         return (tuple(points[0]), tuple(points[1]))
 
     def _subset(self, rect: Rect) -> numpy.ndarray:
         return self._img[rect[0][1]:rect[1][1], rect[0][0]:rect[1][0]]
 
     def _read_hatching_timer(self) -> datetime.timedelta:
+        if self.hatching_timer_position is None:
+            raise HatchingTimerNotFound
         img = self._subset(self.hatching_timer_position)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         __, img = cv2.threshold(img, 210, 255, cv2.THRESH_BINARY_INV)
@@ -85,13 +85,16 @@ class ScreenshotRaid:
 
         self.logger.debug("raw hatching_timer «{}»".format(text))
 
-        result = re.search(r"([0-3]):([0-5][0-9]):([0-5][0-9])", text)
+        result = re.search(r"([0-3])[:\.]([0-5][0-9])[:\.]([0-5][0-9])", text)
 
         try:
+            self.logger.debug("hatching_timer {}:{}:{}".format(result.group(1), result.group(2), result.group(3)))
             return datetime.timedelta(hours=int(result.group(1)), minutes=int(result.group(2)),
                                       seconds=int(result.group(3)))
         except Exception:
             pass
+
+        self.logger.debug("hatching timer unreadable")
         raise HatchingTimerUnreadable
 
     def _find_hatching_timer(self) -> Rect:
@@ -117,9 +120,13 @@ class ScreenshotRaid:
             return ((sub[0][0] + x, sub[0][1] + y), (sub[0][0] + x + w, sub[0][1] + y + h))
         except:
             pass
+
+        self.logger.debug("hatching timer notfound")
         raise HatchingTimerNotFound
 
     def _read_raid_timer(self) -> datetime.timedelta:
+        if self.raid_timer_position is None:
+            raise RaidTimerNotFound
         img = self._subset(self.raid_timer_position)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         __, img = cv2.threshold(img, 210, 255, cv2.THRESH_BINARY_INV)
@@ -130,13 +137,16 @@ class ScreenshotRaid:
 
         self.logger.debug("raw raid_timer «{}»".format(text))
 
-        result = re.search(r"([0-3]):([0-5][0-9]):([0-5][0-9])", text)
+        result = re.search(r"([0-3])[:\.]([0-5][0-9])[:\.]([0-5][0-9])", text)
 
         try:
+            self.logger.debug("raid_timer {}:{}:{}".format(result.group(1), result.group(2), result.group(3)))
             return datetime.timedelta(hours=int(result.group(1)), minutes=int(result.group(2)),
                                       seconds=int(result.group(3)))
         except Exception:
             pass
+
+        self.logger.debug("raid timer unreadable")
         raise RaidTimerUnreadable
 
     def _find_raid_timer(self) -> Rect:
@@ -162,6 +172,8 @@ class ScreenshotRaid:
             return ((sub[0][0] + x, sub[0][1] + y), (sub[0][0] + x + w, sub[0][1] + y + h))
         except:
             pass
+
+        self.logger.debug("raid timer not found")
         raise RaidTimerNotFound
 
     def _find_gym_name(self) -> str:
