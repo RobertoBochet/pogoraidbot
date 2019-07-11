@@ -76,7 +76,7 @@ class Raid:
                 msg.append("{}@{} {}".format(
                     "\U0001F6E9" if v.is_flyer else "",
                     v.name,
-                    "" if v.number == 1 else "+{}".format(v.number)))
+                    "" if v.number == 1 else "+{}".format(v.number - 1)))
 
         return "\n".join(msg)
 
