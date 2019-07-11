@@ -23,6 +23,7 @@ class PoGORaidBot():
         # Init and test redis connection
         self._raids_db = redis.Redis(host=host, port=port, db=0)
         self._participants_db = redis.Redis(host=host, port=port, db=1)
+        self._disabledscan_db = redis.Redis(host=host, port=port, db=2)
         self._raids_db.ping()
 
         # Save debug folder
@@ -71,6 +72,11 @@ class PoGORaidBot():
     def _screenshot_handler(self, bot: Bot, update: Update) -> None:
         self.logger.info("New image is arrived from {} by {}"
                          .format(update.effective_chat.title, update.effective_user.username))
+
+        # Check if scan is disabled for this group
+        if self._disabledscan_db.exists(update.effective_chat.id):
+            self.logger.info("Screenshots scan for group {} is disabled".format(update.effective_chat.title))
+            return
 
         # Get the highest resolution image
         img = update.message.photo[-1].get_file().download_as_bytearray()
