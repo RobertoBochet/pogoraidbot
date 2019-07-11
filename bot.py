@@ -8,8 +8,8 @@ import re
 
 import cv2
 import redis
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode, Update, TelegramError, Bot, Message
-from telegram.ext import Updater, MessageHandler, CallbackQueryHandler
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode, Update, TelegramError, Bot, Message, Chat, User
+from telegram.ext import Updater, MessageHandler, CallbackQueryHandler, CommandHandler
 from telegram.ext.filters import Filters
 
 from raid import Raid
@@ -49,6 +49,11 @@ class PoGORaidBot():
         # Set the handler for the errors
         self._updater.dispatcher.add_error_handler(self._error_handler)
 
+        # Set the handler for disablescan command
+        self._updater.dispatcher.add_handler(CommandHandler("disablescan", self._disablescan_handler))
+        # Set the handler for enablescan command
+        self._updater.dispatcher.add_handler(CommandHandler("enablescan", self._enablescan_handler))
+
         self.logger.info("Bot ready")
 
     def listen(self) -> None:
@@ -75,7 +80,7 @@ class PoGORaidBot():
 
         # Check if scan is disabled for this group
         if self._disabledscan_db.exists(update.effective_chat.id):
-            self.logger.info("Screenshots scan for group {} is disabled".format(update.effective_chat.title))
+            self.logger.info("Screenshots scan for chat {} is disabled".format(update.effective_chat.id))
             return
 
         # Get the highest resolution image
@@ -207,3 +212,38 @@ class PoGORaidBot():
         # Re-pin the new message
         if pinned:
             self._updater.bot.pin_chat_message(message.chat.id, new_msg.message_id, disable_notification=True)
+
+    def _disablescan_handler(self, bot: Bot, update: Update) -> None:
+        self.logger.info("Disable scan for chat {}".format(update.message.chat.id))
+
+        # Check if the sender is an admin
+        if not self._is_admin(update.message.chat, update.message.from_user):
+            self.logger.info("User {} is not admin".format(update.message.from_user.id))
+            return
+
+        # Add current chat to the db of disabled scan
+        self._disabledscan_db.set(update.message.chat.id, "")
+
+        update.message.chat.send_message("The scan now is disabled")
+
+    def _enablescan_handler(self, bot: Bot, update: Update) -> None:
+        self.logger.info("Enable scan for chat {}".format(update.message.chat.id))
+
+        # Check if the sender is an admin
+        if not self._is_admin(update.message.chat, update.message.from_user):
+            self.logger.info("User {} is not admin".format(update.message.from_user.id))
+            return
+
+        # Remove current chat from the db of disabled scan
+        self._disabledscan_db.delete(update.message.chat.id)
+
+        update.message.chat.send_message("The scan now is enabled")
+
+    def _is_admin(self, chat: Chat, user: User) -> bool:
+        # Get the list of administrators of a chat
+        for a in self._updater.bot.get_chat_administrators(chat.id):
+            # Check if the current admin in the user
+            if a.user.id == user.id:
+                return True
+
+        return False
