@@ -8,7 +8,8 @@ import re
 
 import cv2
 import redis
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode, Update, TelegramError, Bot, Message, Chat, User
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode, Update, TelegramError, Bot, Message, Chat, \
+    User
 from telegram.ext import Updater, MessageHandler, CallbackQueryHandler, CommandHandler
 from telegram.ext.filters import Filters
 
@@ -30,10 +31,13 @@ class PoGORaidBot():
         self._debug_folder = debug_folder
 
         # Init the bot
-        self._updater = Updater(token)
+        self._bot = Bot(token)
+
+        # Init updater
+        self._updater = Updater(bot=self._bot)
 
         # Get the id of the bot
-        self._id = self._updater.bot.get_me().id
+        self._id = self._bot.get_me().id
 
         # Set the handler functions
         # Set the handler for screens
@@ -188,15 +192,15 @@ class PoGORaidBot():
         # TODO: improve this check method
         # Check if the old message was pinned
         try:
-            pinned = self._updater.bot.get_chat(message.chat.id).pinned_message.message_id \
+            pinned = self._bot.get_chat(message.chat.id).pinned_message.message_id \
                      == message.message_id
         except:
             pinned = False
 
         # Delete the old bot message and the reply if it exists
-        self._updater.bot.delete_message(message.chat.id, message.message_id)
+        self._bot.delete_message(message.chat.id, message.message_id)
         try:
-            self._updater.bot.delete_message(message.chat.id, user_message.message_id)
+            self._bot.delete_message(message.chat.id, user_message.message_id)
         except:
             pass
 
@@ -211,7 +215,7 @@ class PoGORaidBot():
 
         # Re-pin the new message
         if pinned:
-            self._updater.bot.pin_chat_message(message.chat.id, new_msg.message_id, disable_notification=True)
+            self._bot.pin_chat_message(message.chat.id, new_msg.message_id, disable_notification=True)
 
     def _disablescan_handler(self, bot: Bot, update: Update) -> None:
         self.logger.info("Disable scan for chat {}".format(update.message.chat.id))
@@ -241,7 +245,7 @@ class PoGORaidBot():
 
     def _is_admin(self, chat: Chat, user: User) -> bool:
         # Get the list of administrators of a chat
-        for a in self._updater.bot.get_chat_administrators(chat.id):
+        for a in self._bot.get_chat_administrators(chat.id):
             # Check if the current admin in the user
             if a.user.id == user.id:
                 return True
