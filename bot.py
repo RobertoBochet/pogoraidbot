@@ -53,6 +53,8 @@ class PoGORaidBot():
         # Set the handler for the errors
         self._updater.dispatcher.add_error_handler(self._error_handler)
 
+        # Set the handler for scan command
+        self._updater.dispatcher.add_handler(CommandHandler("scan", self._scan_handler))
         # Set the handler for disablescan command
         self._updater.dispatcher.add_handler(CommandHandler("disablescan", self._disablescan_handler))
         # Set the handler for enablescan command
@@ -87,40 +89,8 @@ class PoGORaidBot():
             self.logger.info("Screenshots scan for chat {} is disabled".format(update.effective_chat.id))
             return
 
-        # Get the highest resolution image
-        img = update.message.photo[-1].get_file().download_as_bytearray()
-
-        # Load the screenshot
-        screen = ScreenshotRaid(img)
-
-        # Check if it's a screenshot of a raid
-        if not screen.is_raid:
-            return
-
-        self.logger.info("It's a valid screen of a raid")
-
-        # Get the raid dataclass
-        raid = screen.to_raid()
-
-        self.logger.debug(raid)
-
-        # Save the raid in the db
-        self._raids_db.setex(raid.code, 60 * 60 * 6, pickle.dumps(raid))
-
-        # Save sections of image if it is required
-        try:
-            if self._debug_folder is not None:
-                cv2.imwrite(os.path.join(self._debug_folder, "{}-anchors.png".format(raid.code)),
-                            screen._get_anchors_image())
-                for s in screen._image_sections:
-                    cv2.imwrite(os.path.join(self._debug_folder, "{}-{}.png".format(raid.code, s)),
-                                screen._image_sections[s])
-        except Exception as e:
-            self.logger.warning("Failed to save sections of image")
-
-        update.message.reply_html(raid.to_msg(), quote=True)
-
-        self.logger.info("A reply was sent")
+        # Scan the screenshot
+        self._scan_screenshot(update.message)
 
     def _set_hangout_handler(self, bot: Bot, update: Update) -> None:
         message = update.message
@@ -192,8 +162,7 @@ class PoGORaidBot():
         # TODO: improve this check method
         # Check if the old message was pinned
         try:
-            pinned = self._bot.get_chat(message.chat.id).pinned_message.message_id \
-                     == message.message_id
+            pinned = self._bot.get_chat(message.chat.id).pinned_message.message_id == message.message_id
         except:
             pinned = False
 
@@ -242,6 +211,54 @@ class PoGORaidBot():
         self._disabledscan_db.delete(update.message.chat.id)
 
         update.message.chat.send_message("The scan now is enabled")
+
+    def _scan_handler(self, bot: Bot, update: Update) -> None:
+        self.logger.info("Required scan from {} by {}".format(update.message.chat.id, update.message.from_user.id))
+
+        # Check if it is a reply to screenshot
+        if update.message.reply_to_message is None or len(update.message.reply_to_message.photo) == 0:
+            update.message.reply_text("It must be a reply to a screenshot")
+            self.logger.info("Invalid scan command")
+            return
+
+        # Scan the screenshot
+        self._scan_screenshot(update.message.reply_to_message)
+
+    def _scan_screenshot(self, message: Message):
+        # Get the highest resolution image
+        img = message.photo[-1].get_file().download_as_bytearray()
+
+        # Load the screenshot
+        screen = ScreenshotRaid(img)
+
+        # Check if it's a screenshot of a raid
+        if not screen.is_raid:
+            return
+
+        self.logger.info("It's a valid screen of a raid")
+
+        # Get the raid dataclass
+        raid = screen.to_raid()
+
+        self.logger.debug(raid)
+
+        # Save the raid in the db
+        self._raids_db.setex(raid.code, 60 * 60 * 6, pickle.dumps(raid))
+
+        # Save sections of image if it is required
+        try:
+            if self._debug_folder is not None:
+                cv2.imwrite(os.path.join(self._debug_folder, "{}-anchors.png".format(raid.code)),
+                            screen._get_anchors_image())
+                for s in screen._image_sections:
+                    cv2.imwrite(os.path.join(self._debug_folder, "{}-{}.png".format(raid.code, s)),
+                                screen._image_sections[s])
+        except Exception as e:
+            self.logger.warning("Failed to save sections of image")
+
+        message.reply_html(raid.to_msg(), quote=True)
+
+        self.logger.info("A reply was sent")
 
     def _is_admin(self, chat: Chat, user: User) -> bool:
         # Get the list of administrators of a chat
