@@ -61,3 +61,12 @@ The parameters can be provided also as environment variables.
 If you don't want to manage the this bot as a standalone application you can use the dockerized version.
 
 You can find it in this [repo](https://github.com/RobertoBochet/pogoraidbot-dockerized).
+
+## Credits
+
+In this project are used the following Python libraries:
+
+ - [python-telegram-bot](https://python-telegram-bot.org/) (LGPLv3 License)
+ - [opencv-python](https://pypi.org/project/opencv-python/) (MIT License)
+ - [pytesseract](https://pypi.org/project/pytesseract/) (GPLv3 License)
+ - [redis](https://pypi.org/project/redis/) (MIT License)
