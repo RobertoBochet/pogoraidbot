@@ -15,7 +15,7 @@ The bot needs Python version 3.7 or newer, and the modules that are present in t
 
 To install the modules use pip:
 ```bash
-$ pip install -r requiremtns.txt
+$ pip install -r requirements.txt
 ```
 
 ### Tesseract
