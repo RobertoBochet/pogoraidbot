@@ -424,12 +424,26 @@ class ScreenshotRaid:
 
     @property
     def is_raid(self) -> bool:
+        # If there are not at least 4 anchors the screenshot is not a raid
+        if self._anchors_available < 4:
+            return False
+
+        # Try to find the hatching timer
         try:
-            return True if self._anchors_available >= 4 else False
-        except AttributeError:
+            self._find_hatching_timer()
+            return True
+        except:
             pass
-        self._find_anchors()
-        return True if self._anchors_available >= 4 else False
+
+        # Try to find the raid timer
+        try:
+            self._find_raid_timer()
+            return True
+        except:
+            pass
+
+        # If there is neither hatching timer nor raid timer then the screenshot is not a raid
+        return False
 
     @property
     def is_egg(self) -> bool:
