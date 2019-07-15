@@ -261,6 +261,10 @@ class PoGORaidBot():
         self.logger.info("A reply was sent")
 
     def _is_admin(self, chat: Chat, user: User) -> bool:
+        # If the chat is private doesn't check administrators
+        if chat.type == chat.PRIVATE:
+            return True
+
         # Get the list of administrators of a chat
         for a in self._bot.get_chat_administrators(chat.id):
             # Check if the current admin in the user
