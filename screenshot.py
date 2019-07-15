@@ -30,6 +30,9 @@ class ScreenshotRaid:
 
         self._size = (len(self._img[0]), len(self._img))
 
+        self._anchors = {}
+        self._anchors_available = 0
+
         self._find_anchors()
 
     def _calc_subset(self, *subs) -> Rect:
@@ -303,8 +306,9 @@ class ScreenshotRaid:
             ]
         }
 
-        self._anchors = {}
-        self._anchors_available = 0
+        # Doesn't search anchors are already found
+        for a in self._anchors:
+            ANCHORS.pop(a, None)
 
         for a in ANCHORS:
             sub = self._calc_subset(ANCHORS[a][0])
