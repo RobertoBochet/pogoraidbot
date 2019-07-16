@@ -9,7 +9,7 @@ import re
 import cv2
 import redis
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode, Update, TelegramError, Bot, Message, Chat, \
-    User
+    User, MessageEntity
 from telegram.ext import Updater, MessageHandler, CallbackQueryHandler, CommandHandler
 from telegram.ext.filters import Filters
 
@@ -17,8 +17,9 @@ from raid import Raid
 from screenshot import ScreenshotRaid
 
 
-class PoGORaidBot():
-    def __init__(self, token: str, host: str = "127.0.0.1", port: int = 6379, superadmin: int = None, debug_folder: str = None):
+class PoGORaidBot:
+    def __init__(self, token: str, host: str = "127.0.0.1", port: int = 6379, superadmin: int = None,
+                 debug_folder: str = None):
         self.logger = logging.getLogger(__name__)
 
         # Init and test redis connection
@@ -28,7 +29,7 @@ class PoGORaidBot():
         self._raids_db.ping()
 
         # Save superadmin
-        self._superadmin = superadmin
+        self._superadmin = int(superadmin)
         # Add superadmin to the admins db
         if self._superadmin is not None:
             self._admins_db.set(self._superadmin, "superadmin")
@@ -62,7 +63,12 @@ class PoGORaidBot():
         self._updater.dispatcher.add_handler(CommandHandler("disablescan", self._disablescan_handler))
         # Set the handler for enablescan command
         self._updater.dispatcher.add_handler(CommandHandler("enablescan", self._enablescan_handler))
-        
+        # Set the handler for addadmin command
+        self._updater.dispatcher.add_handler(CommandHandler("addadmin", self._handler_command_addadmin, Filters.reply))
+        # Set the handler for removeadmin command
+        self._updater.dispatcher.add_handler(CommandHandler("removeadmin", self._handler_command_removeadmin,
+                                                            Filters.reply))
+
         # Set the handler for the errors
         self._updater.dispatcher.add_error_handler(self._error_handler)
 
@@ -265,6 +271,67 @@ class PoGORaidBot():
         message.reply_html(raid.to_msg(), quote=True)
 
         self.logger.info("A reply was sent")
+
+    def _handler_command_addadmin(self, bot: Bot, update: Update) -> bool:
+        self.logger.info("User {} try to add {} as bot admin".format(update.message.from_user.id,
+                                                                     update.message.reply_to_message.from_user.id))
+
+        # Check if the user is an admin
+        if not self._admins_db.exists(update.message.from_user.id):
+            self.logger.warning("User {} is not a bot admin".format(update.message.from_user.id))
+            return False
+
+        # Check if the cited user is already a bot admin
+        if self._admins_db.exists(update.message.reply_to_message.from_user.id):
+            self.logger.info("User {} is already a bot admin".format(update.message.reply_to_message.from_user.id))
+            update.message.reply_markdown("[{}](tg://user?id={}) is already a bot admin"
+                                          .format(update.message.reply_to_message.from_user.username,
+                                                  update.message.reply_to_message.from_user.id))
+            return False
+
+        # Add cited user as bot admin
+        self._admins_db.set(update.message.reply_to_message.from_user.id,
+                            update.message.reply_to_message.from_user.username)
+        self.logger.info("User {} is now a bot admin".format(update.message.reply_to_message.from_user.id))
+        update.message.reply_markdown("[{}](tg://user?id={}) is now a bot admin"
+                                      .format(update.message.reply_to_message.from_user.username,
+                                              update.message.reply_to_message.from_user.id))
+
+        return True
+
+    def _handler_command_removeadmin(self, bot: Bot, update: Update) -> bool:
+        self.logger.info("User {} try to remove {} as bot admin".format(update.message.from_user.id,
+                                                                        update.message.reply_to_message.from_user.id))
+
+        # Check if the user is an admin
+        if not self._admins_db.exists(update.message.from_user.id):
+            self.logger.warning("User {} is not a bot admin".format(update.message.from_user.id))
+            return False
+
+        # Check if the mentioned user is the superadmin
+        if self._superadmin == update.message.reply_to_message.from_user.id:
+            self.logger.info("User {} is the superadmin".format(update.message.reply_to_message.from_user.id))
+            update.message.reply_markdown("[{}](tg://user?id={}) is the superadmin and it cannot be removed"
+                                          .format(update.message.reply_to_message.from_user.username,
+                                                  update.message.reply_to_message.from_user.id))
+            return False
+
+        # Check if the cited user is not a bot admin
+        if not self._admins_db.exists(update.message.reply_to_message.from_user.id):
+            self.logger.info("User {} is not a bot admin".format(update.message.reply_to_message.from_user.id))
+            update.message.reply_markdown("[{}](tg://user?id={}) is not a bot admin"
+                                          .format(update.message.reply_to_message.from_user.username,
+                                                  update.message.reply_to_message.from_user.id))
+            return False
+
+        # Remove cited user as bot admin
+        self._admins_db.delete(update.message.reply_to_message.from_user.id)
+        self.logger.info("User {} is no longer a bot admin".format(update.message.reply_to_message.from_user.id))
+        update.message.reply_markdown("[{}](tg://user?id={}) is no longer a bot admin"
+                                      .format(update.message.reply_to_message.from_user.username,
+                                              update.message.reply_to_message.from_user.id))
+
+        return True
 
     def _is_admin(self, chat: Chat, user: User) -> bool:
         # If the chat is private doesn't check administrators
