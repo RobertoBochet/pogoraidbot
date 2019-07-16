@@ -23,16 +23,16 @@ class PoGORaidBot:
         self.logger = logging.getLogger(__name__)
 
         # Init and test redis connection
-        self._raids_db = redis.Redis(host=host, port=port, db=0)
-        self._admins_db = redis.Redis(host=host, port=port, db=1)
-        self._disabledscan_db = redis.Redis(host=host, port=port, db=2)
-        self._raids_db.ping()
+        self._db_raids = redis.Redis(host=host, port=port, db=0)
+        self._db_admins = redis.Redis(host=host, port=port, db=1)
+        self._db_disabledscan = redis.Redis(host=host, port=port, db=2)
+        self._db_raids.ping()
 
         # Save superadmin
         self._superadmin = int(superadmin)
         # Add superadmin to the admins db
         if self._superadmin is not None:
-            self._admins_db.set(self._superadmin, "superadmin")
+            self._db_admins.set(self._superadmin, "superadmin")
 
         # Save debug folder
         self._debug_folder = debug_folder
@@ -98,7 +98,7 @@ class PoGORaidBot:
                          .format(update.effective_chat.title, update.effective_user.username))
 
         # Check if scan is disabled for this group
-        if self._disabledscan_db.exists(update.effective_chat.id):
+        if self._db_disabledscan.exists(update.effective_chat.id):
             self.logger.info("Screenshots scan for chat {} is disabled".format(update.effective_chat.id))
             return
 
@@ -115,7 +115,7 @@ class PoGORaidBot:
             # Search the code in the bot message
             code = re.search(r"\[([a-zA-Z0-9]{8})\]", message.reply_to_message.text).group(1)
             # Try to retrieve the raid information
-            raid = pickle.loads(self._raids_db.get(code))
+            raid = pickle.loads(self._db_raids.get(code))
         except:
             self.logger.warning("A invalid to bot message reply was come")
             return
@@ -130,7 +130,7 @@ class PoGORaidBot:
         self.logger.debug(raid)
 
         # Save the raid in the db
-        self._raids_db.setex(raid.code, 60 * 60 * 6, pickle.dumps(raid))
+        self._db_raids.setex(raid.code, 60 * 60 * 6, pickle.dumps(raid))
 
         # Updates the message
         self._repost(raid, message)
@@ -140,7 +140,7 @@ class PoGORaidBot:
             # Validate the data
             result = re.match(r"([a-zA-Z0-9]{8}):([afr])", update.callback_query.data)
             # Try to retrieve the raid information
-            raid = pickle.loads(self._raids_db.get(result.group(1)))
+            raid = pickle.loads(self._db_raids.get(result.group(1)))
             # Get operation
             op = result.group(2)
         except:
@@ -160,7 +160,7 @@ class PoGORaidBot:
         self.logger.debug(raid)
 
         # Save the raid in the db
-        self._raids_db.setex(raid.code, 60 * 60 * 6, pickle.dumps(raid))
+        self._db_raids.setex(raid.code, 60 * 60 * 6, pickle.dumps(raid))
 
         # Updates the message
         self._repost(raid, update.callback_query.message)
@@ -206,7 +206,7 @@ class PoGORaidBot:
             return
 
         # Add current chat to the db of disabled scan
-        self._disabledscan_db.set(update.message.chat.id, "")
+        self._db_disabledscan.set(update.message.chat.id, "")
 
         update.message.chat.send_message("The scan now is disabled")
 
@@ -219,7 +219,7 @@ class PoGORaidBot:
             return
 
         # Remove current chat from the db of disabled scan
-        self._disabledscan_db.delete(update.message.chat.id)
+        self._db_disabledscan.delete(update.message.chat.id)
 
         update.message.chat.send_message("The scan now is enabled")
 
@@ -254,7 +254,7 @@ class PoGORaidBot:
         #self.logger.debug(raid)
 
         # Save the raid in the db
-        self._raids_db.setex(raid.code, 60 * 60 * 6, pickle.dumps(raid))
+        self._db_raids.setex(raid.code, 60 * 60 * 6, pickle.dumps(raid))
 
         # Save sections of image if it is required
         try:
@@ -276,12 +276,12 @@ class PoGORaidBot:
                                                                      update.message.reply_to_message.from_user.id))
 
         # Check if the user is an admin
-        if not self._admins_db.exists(update.message.from_user.id):
+        if not self._db_admins.exists(update.message.from_user.id):
             self.logger.warning("User {} is not a bot admin".format(update.message.from_user.id))
             return False
 
         # Check if the cited user is already a bot admin
-        if self._admins_db.exists(update.message.reply_to_message.from_user.id):
+        if self._db_admins.exists(update.message.reply_to_message.from_user.id):
             self.logger.info("User {} is already a bot admin".format(update.message.reply_to_message.from_user.id))
             update.message.reply_markdown("[{}](tg://user?id={}) is already a bot admin"
                                           .format(update.message.reply_to_message.from_user.username,
@@ -289,7 +289,7 @@ class PoGORaidBot:
             return False
 
         # Add cited user as bot admin
-        self._admins_db.set(update.message.reply_to_message.from_user.id,
+        self._db_admins.set(update.message.reply_to_message.from_user.id,
                             update.message.reply_to_message.from_user.username)
         self.logger.info("User {} is now a bot admin".format(update.message.reply_to_message.from_user.id))
         update.message.reply_markdown("[{}](tg://user?id={}) is now a bot admin"
@@ -303,7 +303,7 @@ class PoGORaidBot:
                                                                         update.message.reply_to_message.from_user.id))
 
         # Check if the user is an admin
-        if not self._admins_db.exists(update.message.from_user.id):
+        if not self._db_admins.exists(update.message.from_user.id):
             self.logger.warning("User {} is not a bot admin".format(update.message.from_user.id))
             return False
 
@@ -316,7 +316,7 @@ class PoGORaidBot:
             return False
 
         # Check if the cited user is not a bot admin
-        if not self._admins_db.exists(update.message.reply_to_message.from_user.id):
+        if not self._db_admins.exists(update.message.reply_to_message.from_user.id):
             self.logger.info("User {} is not a bot admin".format(update.message.reply_to_message.from_user.id))
             update.message.reply_markdown("[{}](tg://user?id={}) is not a bot admin"
                                           .format(update.message.reply_to_message.from_user.username,
@@ -324,7 +324,7 @@ class PoGORaidBot:
             return False
 
         # Remove cited user as bot admin
-        self._admins_db.delete(update.message.reply_to_message.from_user.id)
+        self._db_admins.delete(update.message.reply_to_message.from_user.id)
         self.logger.info("User {} is no longer a bot admin".format(update.message.reply_to_message.from_user.id))
         update.message.reply_markdown("[{}](tg://user?id={}) is no longer a bot admin"
                                       .format(update.message.reply_to_message.from_user.username,
