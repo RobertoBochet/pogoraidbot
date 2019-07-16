@@ -6,13 +6,15 @@ import argparse
 from bot import PoGORaidBot
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.WARNING, format="%(levelname)s|%(name)s|%(message)s")
+    logging.basicConfig(format="%(levelname)s|%(name)s|%(message)s")
 
     # Set warning logging level for the module
     logging.getLogger("bot").setLevel(logging.DEBUG)
     logging.getLogger("screenshot").setLevel(logging.DEBUG)
-    logging.getLogger("telegram").setLevel(logging.WARNING)
-    logging.getLogger("JobQueue").setLevel(logging.WARNING)
+    logging.getLogger("telegram").setLevel(logging.ERROR)
+    logging.getLogger("telegram.ext.dispatcher").setLevel(logging.ERROR)
+    logging.getLogger("telegram.ext.updater").setLevel(logging.ERROR)
+    logging.getLogger("JobQueue").setLevel(logging.ERROR)
 
     # Get environment variables
     env = {}
@@ -20,6 +22,7 @@ if __name__ == "__main__":
     env["token"] = os.getenv("BOT_TOKEN")
     env["host"] = os.getenv("REDIS_HOST")
     env["port"] = os.getenv("REDIS_PORT")
+    env["superadmin"] = os.getenv("SUPERADMIN")
     env["debug_folder"] = os.getenv("DEBUG_FOLDER")
 
     # Get inline arguments
@@ -28,6 +31,7 @@ if __name__ == "__main__":
     parser.add_argument("-t", "--token", dest="token", help="telegram bot token")
     parser.add_argument("-r", "--host", dest="host", help="redis host")
     parser.add_argument("-p", "--port", dest="port", help="redis port")
+    parser.add_argument("-a", "--superadmin", dest="superadmin", help="superadmin's id")
     parser.add_argument("-d", "--debug-folder", dest="debug_folder", help="debug folder")
 
     args = vars(parser.parse_args())

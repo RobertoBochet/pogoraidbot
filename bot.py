@@ -18,14 +18,20 @@ from screenshot import ScreenshotRaid
 
 
 class PoGORaidBot():
-    def __init__(self, token: str, host: str = "127.0.0.1", port: int = 6379, debug_folder: str = None):
+    def __init__(self, token: str, host: str = "127.0.0.1", port: int = 6379, superadmin: int = None, debug_folder: str = None):
         self.logger = logging.getLogger(__name__)
 
         # Init and test redis connection
         self._raids_db = redis.Redis(host=host, port=port, db=0)
-        self._participants_db = redis.Redis(host=host, port=port, db=1)
+        self._admins_db = redis.Redis(host=host, port=port, db=1)
         self._disabledscan_db = redis.Redis(host=host, port=port, db=2)
         self._raids_db.ping()
+
+        # Save superadmin
+        self._superadmin = superadmin
+        # Add superadmin to the admins db
+        if self._superadmin is not None:
+            self._admins_db.set(self._superadmin, "superadmin")
 
         # Save debug folder
         self._debug_folder = debug_folder
@@ -41,8 +47,7 @@ class PoGORaidBot():
 
         # Set the handler functions
         # Set the handler for screens
-        self._updater.dispatcher.add_handler(
-            MessageHandler(Filters.photo, self._screenshot_handler))
+        self._updater.dispatcher.add_handler(MessageHandler(Filters.photo, self._screenshot_handler))
         # Set the handler to set the hangout
         self._updater.dispatcher.add_handler(
             MessageHandler(Filters.reply & Filters.regex(r"[0-2]?[0-9][:\.,][0-5]?[0-9]"), self._set_hangout_handler))
@@ -50,8 +55,6 @@ class PoGORaidBot():
         self._updater.dispatcher.add_handler(CallbackQueryHandler(self._buttons_handler))
         # Set the handler for the pinned message notify
         self._updater.dispatcher.add_handler(MessageHandler(Filters.status_update.pinned_message, self._pinned_handler))
-        # Set the handler for the errors
-        self._updater.dispatcher.add_error_handler(self._error_handler)
 
         # Set the handler for scan command
         self._updater.dispatcher.add_handler(CommandHandler("scan", self._scan_handler))
@@ -59,6 +62,9 @@ class PoGORaidBot():
         self._updater.dispatcher.add_handler(CommandHandler("disablescan", self._disablescan_handler))
         # Set the handler for enablescan command
         self._updater.dispatcher.add_handler(CommandHandler("enablescan", self._enablescan_handler))
+        
+        # Set the handler for the errors
+        self._updater.dispatcher.add_error_handler(self._error_handler)
 
         self.logger.info("Bot ready")
 
