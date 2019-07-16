@@ -26,6 +26,7 @@ class PoGORaidBot:
         self._db_raids = redis.Redis(host=host, port=port, db=0)
         self._db_admins = redis.Redis(host=host, port=port, db=1)
         self._db_disabledscan = redis.Redis(host=host, port=port, db=2)
+        self._db_enabledchats = redis.Redis(host=host, port=port, db=3)
         self._db_raids.ping()
 
         # Save superadmin
@@ -60,10 +61,14 @@ class PoGORaidBot:
 
         # Set the handler for scan command
         self._updater.dispatcher.add_handler(CommandHandler("scan", self._handler_command_scan))
-        # Set the handler for disablescan command
-        self._updater.dispatcher.add_handler(CommandHandler("disablescan", self._handler_command_disablescan))
+        # Set the handler for enablechat command
+        self._updater.dispatcher.add_handler(CommandHandler("enablechat", self._handler_command_enablechat))
+        # Set the handler for disablechat command
+        self._updater.dispatcher.add_handler(CommandHandler("disablechat", self._handler_command_disablechat))
         # Set the handler for enablescan command
         self._updater.dispatcher.add_handler(CommandHandler("enablescan", self._handler_command_enablescan))
+        # Set the handler for disablescan command
+        self._updater.dispatcher.add_handler(CommandHandler("disablescan", self._handler_command_disablescan))
         # Set the handler for addadmin command
         self._updater.dispatcher.add_handler(CommandHandler("addadmin", self._handler_command_addadmin, Filters.reply))
         # Set the handler for removeadmin command
@@ -251,7 +256,7 @@ class PoGORaidBot:
         # Get the raid dataclass
         raid = screen.to_raid()
 
-        #self.logger.debug(raid)
+        # self.logger.debug(raid)
 
         # Save the raid in the db
         self._db_raids.setex(raid.code, 60 * 60 * 6, pickle.dumps(raid))
@@ -275,7 +280,7 @@ class PoGORaidBot:
         self.logger.info("User {} try to add {} as bot admin".format(update.message.from_user.id,
                                                                      update.message.reply_to_message.from_user.id))
 
-        # Check if the user is an admin
+        # Check if the user is a bot admin
         if not self._db_admins.exists(update.message.from_user.id):
             self.logger.warning("User {} is not a bot admin".format(update.message.from_user.id))
             return False
@@ -302,7 +307,7 @@ class PoGORaidBot:
         self.logger.info("User {} try to remove {} as bot admin".format(update.message.from_user.id,
                                                                         update.message.reply_to_message.from_user.id))
 
-        # Check if the user is an admin
+        # Check if the user is a bot admin
         if not self._db_admins.exists(update.message.from_user.id):
             self.logger.warning("User {} is not a bot admin".format(update.message.from_user.id))
             return False
@@ -329,6 +334,50 @@ class PoGORaidBot:
         update.message.reply_markdown("[{}](tg://user?id={}) is no longer a bot admin"
                                       .format(update.message.reply_to_message.from_user.username,
                                               update.message.reply_to_message.from_user.id))
+
+        return True
+
+    def _handler_command_enablechat(self, bot: Bot, update: Update) -> bool:
+        self.logger.info("User {} try to enable the chat {}".format(update.message.from_user.id,
+                                                                    update.message.chat.id))
+
+        # Check if the user is a bot admin
+        if not self._db_admins.exists(update.message.from_user.id):
+            self.logger.warning("User {} is not a bot admin".format(update.message.from_user.id))
+            return False
+
+        # Check if this chat is already enabled
+        if self._db_enabledchats.exists(update.message.chat.id):
+            self.logger.info("Chat {} is already enabled".format(update.message.chat.id))
+            update.message.reply_markdown("This chat is already enabled")
+            return False
+
+        # Add this chat to the enabled
+        self._db_enabledchats.set(update.message.chat.id, "")
+        self.logger.info("Chat {} is now enabled".format(update.message.chat.id))
+        update.message.reply_markdown("This chat is now enabled")
+
+        return True
+
+    def _handler_command_disablechat(self, bot: Bot, update: Update) -> bool:
+        self.logger.info("User {} try to disable the chat {}".format(update.message.from_user.id,
+                                                                     update.message.chat.id))
+
+        # Check if the user is a bot admin
+        if not self._db_admins.exists(update.message.from_user.id):
+            self.logger.warning("User {} is not a bot admin".format(update.message.from_user.id))
+            return False
+
+        # Check if this chat is not enabled
+        if not self._db_enabledchats.exists(update.message.chat.id):
+            self.logger.info("Chat {} is not enabled".format(update.message.chat.id))
+            update.message.reply_markdown("This chat is not enabled")
+            return False
+
+        # Remove this chat to the enabled
+        self._db_enabledchats.delete(update.message.chat.id)
+        self.logger.info("Chat {} is no longer enabled".format(update.message.chat.id))
+        update.message.reply_markdown("This chat is no longer enabled")
 
         return True
 
