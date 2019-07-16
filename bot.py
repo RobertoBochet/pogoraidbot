@@ -9,7 +9,7 @@ import re
 import cv2
 import redis
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode, Update, TelegramError, Bot, Message, Chat, \
-    User, MessageEntity
+    User
 from telegram.ext import Updater, MessageHandler, CallbackQueryHandler, CommandHandler
 from telegram.ext.filters import Filters
 
@@ -50,13 +50,13 @@ class PoGORaidBot:
         # Set the handler for screens
         self._updater.dispatcher.add_handler(MessageHandler(Filters.photo, self._handler_screenshot))
         # Set the handler to set the hangout
-        self._updater.dispatcher.add_handler(
-            MessageHandler(Filters.reply & Filters.regex(r"[0-2]?[0-9][:\.,][0-5]?[0-9]"), self._handler_set_hangout))
+        self._updater.dispatcher.add_handler(MessageHandler(
+            Filters.reply & Filters.regex(r"^\s*[0-2]?[0-9][:.,][0-5]?[0-9]\s*$"), self._handler_set_hangout))
         # Set the handler for the buttons
         self._updater.dispatcher.add_handler(CallbackQueryHandler(self._handler_buttons))
         # Set the handler for the pinned message notify
-        self._updater.dispatcher.add_handler(
-            MessageHandler(Filters.status_update.pinned_message, self._handler_event_pinned))
+        self._updater.dispatcher.add_handler(MessageHandler(Filters.status_update.pinned_message,
+                                                            self._handler_event_pinned))
 
         # Set the handler for scan command
         self._updater.dispatcher.add_handler(CommandHandler("scan", self._handler_command_scan))
@@ -86,7 +86,7 @@ class PoGORaidBot:
     def _handler_error(self, bot: Bot, update: Update, error: TelegramError) -> None:
         self.logger.warning('Update "{}" caused error "{}"'.format(update, error))
 
-    def _handler_pinned(self, bot: Bot, update: Update) -> None:
+    def _handler_event_pinned(self, bot: Bot, update: Update) -> None:
         # Check if the pin is caused by the bot
         if update.message.from_user.id != self._id:
             return
@@ -136,11 +136,9 @@ class PoGORaidBot:
         self._repost(raid, message)
 
     def _handler_buttons(self, bot: Bot, update: Update) -> None:
-        clb = update.callback_query
-
         try:
             # Validate the data
-            result = re.match(r"([a-zA-Z0-9]{8})\:([afr])", clb.data)
+            result = re.match(r"([a-zA-Z0-9]{8}):([afr])", update.callback_query.data)
             # Try to retrieve the raid information
             raid = pickle.loads(self._raids_db.get(result.group(1)))
             # Get operation
@@ -153,11 +151,11 @@ class PoGORaidBot:
 
         # Edit list of participants
         if op == "a":
-            raid.add_participant(clb.from_user.id, clb.from_user.username)
+            raid.add_participant(update.callback_query.from_user)
         elif op == "f":
-            raid.add_flyer(clb.from_user.id, clb.from_user.username)
+            raid.add_flyer(update.callback_query.from_user)
         else:
-            raid.remove_participant(clb.from_user.id)
+            raid.remove_participant(update.callback_query.from_user)
 
         self.logger.debug(raid)
 
@@ -165,7 +163,7 @@ class PoGORaidBot:
         self._raids_db.setex(raid.code, 60 * 60 * 6, pickle.dumps(raid))
 
         # Updates the message
-        self._repost(raid, clb.message)
+        self._repost(raid, update.callback_query.message)
 
     def _repost(self, raid: Raid, message: Message) -> None:
         if message.from_user.id != self._id:
@@ -188,7 +186,7 @@ class PoGORaidBot:
 
         # Send new message
         new_msg = message.chat.send_message(raid.to_msg(),
-                                            parse_mode=ParseMode.HTML,
+                                            parse_mode=ParseMode.MARKDOWN,
                                             reply_markup=InlineKeyboardMarkup([[
                                                 InlineKeyboardButton("\U0001F42F", callback_data=raid.code + ":a"),
                                                 InlineKeyboardButton("\U0001F985", callback_data=raid.code + ":f"),
@@ -253,7 +251,7 @@ class PoGORaidBot:
         # Get the raid dataclass
         raid = screen.to_raid()
 
-        self.logger.debug(raid)
+        #self.logger.debug(raid)
 
         # Save the raid in the db
         self._raids_db.setex(raid.code, 60 * 60 * 6, pickle.dumps(raid))
@@ -269,7 +267,7 @@ class PoGORaidBot:
         except Exception as e:
             self.logger.warning("Failed to save sections of image")
 
-        message.reply_html(raid.to_msg(), quote=True)
+        message.reply_markdown(raid.to_msg(), quote=True)
 
         self.logger.info("A reply was sent")
 

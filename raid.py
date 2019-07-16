@@ -5,6 +5,8 @@ import random
 import string
 from dataclasses import dataclass, field
 from typing import Dict
+from telegram import User
+import textwrap
 
 
 @dataclass
@@ -21,62 +23,69 @@ class Raid:
     is_aprx_time: bool = False
     participants: Dict[int, Participant] = field(default_factory=lambda: {})
 
-    def add_participant(self, id: int, name: str) -> None:
-        if id in self.participants:
-            self.participants[id].name = name
-            self.participants[id].number += 1
-            self.participants[id].is_flyer = False
+    def add_participant(self, user: User) -> None:
+        if user.id in self.participants:
+            self.participants[user.id].username = user.username
+            self.participants[user.id].number += 1
+            self.participants[user.id].is_flyer = False
         else:
-            self.participants[id] = Participant(id, name)
+            self.participants[user.id] = Participant(user.id, user.username)
 
-    def add_flyer(self, id: int, name: str) -> None:
-        if id in self.participants:
-            self.participants[id].name = name
-            self.participants[id].number += 1
-            self.participants[id].is_flyer = True
+    def add_flyer(self, user: User) -> None:
+        if user.id in self.participants:
+            self.participants[user.id].username = user.username
+            self.participants[user.id].number += 1
+            self.participants[user.id].is_flyer = True
         else:
-            self.participants[id] = Participant(id, name, is_flyer=True)
+            self.participants[user.id] = Participant(user.id, user.username, is_flyer=True)
 
-    def remove_participant(self, id: int) -> bool:
-        if id in self.participants:
-            if self.participants[id].number > 1:
-                self.participants[id].number -= 1
+    def remove_participant(self, user: User) -> bool:
+        if user.id in self.participants:
+            if self.participants[user.id].number > 1:
+                self.participants[user.id].number -= 1
             else:
-                del self.participants[id]
+                del self.participants[user.id]
             return True
         return False
 
     def to_msg(self) -> str:
-
         msg = []
 
-        if self.is_hatched:
-            msg.append("<b>Boss</b>")
+        msg.append("\n".join(textwrap.wrap("_{}_".format(self.gym_name), 25)))
 
-        msg.append("<code>{}</code>".format("\U00002B50" * self.level))
-        msg.append("<i>{}</i>".format(self.gym_name))
+        msg.append("")
+        if self.is_hatched:
+            msg.append("*Boss*")
+        msg.append("`{}`".format("\U00002B50" * self.level))
+        msg.append("")
 
         if self.hatching is not None:
-            msg.append("<pre>Hatching:  {}{}</pre>"
+            msg.append("`Hatching:      {}{}`"
                        .format("~" if self.is_aprx_time else " ", self.hatching.strftime("%H:%M")))
 
         if self.end is not None:
-            msg.append("<pre>End:       {}{}</pre>"
+            msg.append("`End:           {}{}`"
                        .format("~" if self.is_aprx_time else " ", self.end.strftime("%H:%M")))
 
         if self.hangout is not None:
-            msg.append("<pre>Hangout:    {}</pre>".format(self.hangout.strftime("%H:%M")))
-
-        msg.append("<code>[{}]</code>".format(self.code))
+            msg.append("`Hangout:        {}`".format(self.hangout.strftime("%H:%M")))
 
         if len(self.participants) is not 0:
-            msg.append("<b>--------------</b>")
+            c = 0
+            msg.append("`─────────────────────`")
+
             for p in self.participants:
                 v = self.participants[p]
-                msg.append("{}@{} {}".format(
+                msg.append("[{}](tg://user?id={}){} {}".format(
+                    v.username, p,
                     "\U0001F6E9" if v.is_flyer else "",
-                    v.name,
                     "" if v.number == 1 else "+{}".format(v.number - 1)))
+                c += v.number
+
+            msg.append("`─────────────────────`")
+            msg.append("*{}* participants".format(c))
+
+        msg.append("`[{}]`".format(self.code))
 
         return "\n".join(msg)
 
@@ -84,6 +93,6 @@ class Raid:
 @dataclass
 class Participant:
     id: int
-    name: str
+    username: str
     is_flyer: bool = False
     number: int = 1
