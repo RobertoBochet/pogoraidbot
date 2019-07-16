@@ -30,7 +30,7 @@ class PoGORaidBot:
         self._db_raids.ping()
 
         # Save superadmin
-        self._superadmin = int(superadmin)
+        self._superadmin = int(superadmin) if superadmin is not None else None
         # Add superadmin to the admins db
         if self._superadmin is not None:
             self._db_admins.set(self._superadmin, "superadmin")
