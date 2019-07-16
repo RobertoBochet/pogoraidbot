@@ -48,21 +48,22 @@ class PoGORaidBot:
 
         # Set the handler functions
         # Set the handler for screens
-        self._updater.dispatcher.add_handler(MessageHandler(Filters.photo, self._screenshot_handler))
+        self._updater.dispatcher.add_handler(MessageHandler(Filters.photo, self._handler_screenshot))
         # Set the handler to set the hangout
         self._updater.dispatcher.add_handler(
-            MessageHandler(Filters.reply & Filters.regex(r"[0-2]?[0-9][:\.,][0-5]?[0-9]"), self._set_hangout_handler))
+            MessageHandler(Filters.reply & Filters.regex(r"[0-2]?[0-9][:\.,][0-5]?[0-9]"), self._handler_set_hangout))
         # Set the handler for the buttons
-        self._updater.dispatcher.add_handler(CallbackQueryHandler(self._buttons_handler))
+        self._updater.dispatcher.add_handler(CallbackQueryHandler(self._handler_buttons))
         # Set the handler for the pinned message notify
-        self._updater.dispatcher.add_handler(MessageHandler(Filters.status_update.pinned_message, self._pinned_handler))
+        self._updater.dispatcher.add_handler(
+            MessageHandler(Filters.status_update.pinned_message, self._handler_event_pinned))
 
         # Set the handler for scan command
-        self._updater.dispatcher.add_handler(CommandHandler("scan", self._scan_handler))
+        self._updater.dispatcher.add_handler(CommandHandler("scan", self._handler_command_scan))
         # Set the handler for disablescan command
-        self._updater.dispatcher.add_handler(CommandHandler("disablescan", self._disablescan_handler))
+        self._updater.dispatcher.add_handler(CommandHandler("disablescan", self._handler_command_disablescan))
         # Set the handler for enablescan command
-        self._updater.dispatcher.add_handler(CommandHandler("enablescan", self._enablescan_handler))
+        self._updater.dispatcher.add_handler(CommandHandler("enablescan", self._handler_command_enablescan))
         # Set the handler for addadmin command
         self._updater.dispatcher.add_handler(CommandHandler("addadmin", self._handler_command_addadmin, Filters.reply))
         # Set the handler for removeadmin command
@@ -70,7 +71,7 @@ class PoGORaidBot:
                                                             Filters.reply))
 
         # Set the handler for the errors
-        self._updater.dispatcher.add_error_handler(self._error_handler)
+        self._updater.dispatcher.add_error_handler(self._handler_error)
 
         self.logger.info("Bot ready")
 
@@ -82,17 +83,17 @@ class PoGORaidBot:
         # Wait
         self._updater.idle()
 
-    def _error_handler(self, bot: Bot, update: Update, error: TelegramError) -> None:
+    def _handler_error(self, bot: Bot, update: Update, error: TelegramError) -> None:
         self.logger.warning('Update "{}" caused error "{}"'.format(update, error))
 
-    def _pinned_handler(self, bot: Bot, update: Update) -> None:
+    def _handler_pinned(self, bot: Bot, update: Update) -> None:
         # Check if the pin is caused by the bot
         if update.message.from_user.id != self._id:
             return
         # Remove the notify message
         bot.delete_message(update.message.chat.id, update.message.message_id)
 
-    def _screenshot_handler(self, bot: Bot, update: Update) -> None:
+    def _handler_screenshot(self, bot: Bot, update: Update) -> None:
         self.logger.info("New image is arrived from {} by {}"
                          .format(update.effective_chat.title, update.effective_user.username))
 
@@ -104,7 +105,7 @@ class PoGORaidBot:
         # Scan the screenshot
         self._scan_screenshot(update.message)
 
-    def _set_hangout_handler(self, bot: Bot, update: Update) -> None:
+    def _handler_set_hangout(self, bot: Bot, update: Update) -> None:
         message = update.message
         # Check if the reply is for the bot
         if message.reply_to_message.from_user.id != self._id:
@@ -134,7 +135,7 @@ class PoGORaidBot:
         # Updates the message
         self._repost(raid, message)
 
-    def _buttons_handler(self, bot: Bot, update: Update) -> None:
+    def _handler_buttons(self, bot: Bot, update: Update) -> None:
         clb = update.callback_query
 
         try:
@@ -198,7 +199,7 @@ class PoGORaidBot:
         if pinned:
             self._bot.pin_chat_message(message.chat.id, new_msg.message_id, disable_notification=True)
 
-    def _disablescan_handler(self, bot: Bot, update: Update) -> None:
+    def _handler_command_disablescan(self, bot: Bot, update: Update) -> None:
         self.logger.info("Disable scan for chat {}".format(update.message.chat.id))
 
         # Check if the sender is an admin
@@ -211,7 +212,7 @@ class PoGORaidBot:
 
         update.message.chat.send_message("The scan now is disabled")
 
-    def _enablescan_handler(self, bot: Bot, update: Update) -> None:
+    def _handler_command_enablescan(self, bot: Bot, update: Update) -> None:
         self.logger.info("Enable scan for chat {}".format(update.message.chat.id))
 
         # Check if the sender is an admin
@@ -224,7 +225,7 @@ class PoGORaidBot:
 
         update.message.chat.send_message("The scan now is enabled")
 
-    def _scan_handler(self, bot: Bot, update: Update) -> None:
+    def _handler_command_scan(self, bot: Bot, update: Update) -> None:
         self.logger.info("Required scan from {} by {}".format(update.message.chat.id, update.message.from_user.id))
 
         # Check if it is a reply to screenshot
