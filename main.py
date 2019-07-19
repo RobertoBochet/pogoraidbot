@@ -2,19 +2,13 @@
 import logging
 import os
 import argparse
+import colorlog
 
 from bot import PoGORaidBot
 
 if __name__ == "__main__":
+    # Set logging format
     logging.basicConfig(format="%(levelname)s|%(name)s|%(message)s")
-
-    # Set warning logging level for the module
-    logging.getLogger("bot").setLevel(logging.DEBUG)
-    logging.getLogger("screenshot").setLevel(logging.DEBUG)
-    logging.getLogger("telegram").setLevel(logging.ERROR)
-    logging.getLogger("telegram.ext.dispatcher").setLevel(logging.ERROR)
-    logging.getLogger("telegram.ext.updater").setLevel(logging.ERROR)
-    logging.getLogger("JobQueue").setLevel(logging.ERROR)
 
     # Get environment variables
     env = {}
@@ -24,6 +18,7 @@ if __name__ == "__main__":
     env["port"] = os.getenv("REDIS_PORT")
     env["superadmin"] = os.getenv("SUPERADMIN")
     env["debug_folder"] = os.getenv("DEBUG_FOLDER")
+    env["verbosity_level"] = os.getenv("VERBOSITY_LEVEL")
 
     # Get inline arguments
     parser = argparse.ArgumentParser()
@@ -33,6 +28,12 @@ if __name__ == "__main__":
     parser.add_argument("-p", "--port", dest="port", help="redis port")
     parser.add_argument("-a", "--superadmin", dest="superadmin", help="superadmin's id")
     parser.add_argument("-d", "--debug-folder", dest="debug_folder", help="debug folder")
+    parser.add_argument("-v", dest="verbosity_level", action="count", default=None,
+                        help="number of -v specifics level of verbosity")
+    parser.add_argument("--verbose", dest="verbosity_level", action="store_const", const=3,
+                        help="equal to -vvv")
+    parser.add_argument("--debug", dest="verbosity_level", action="store_const", const=4,
+                        help="equal to -vvvv")
 
     args = vars(parser.parse_args())
 
@@ -42,6 +43,37 @@ if __name__ == "__main__":
 
     # Merge environment variables and inline arguments
     args = {**env, **args}
+
+    # Found verbosity level
+    try:
+        v = args.pop("verbosity_level")
+
+        try:
+            if v >= 4:
+                v = 4
+        except:
+            pass
+
+        if v == "DEBUG" or v == 4:
+            verbosity_level = logging.DEBUG
+        elif v == "VERBOSE" or v == 3:
+            verbosity_level = logging.VERBOSE
+        elif v == "INFO" or v == 2:
+            verbosity_level = logging.INFO
+        elif v == "WARNING" or v == 1:
+            verbosity_level = logging.WARNING
+        elif v == "ERROR":
+            verbosity_level = logging.ERROR
+    except:
+        verbosity_level = logging.ERROR
+
+    # Set warning logging level for the module
+    logging.getLogger("bot").setLevel(verbosity_level)
+    logging.getLogger("screenshot").setLevel(verbosity_level)
+    logging.getLogger("telegram").setLevel(logging.ERROR)
+    logging.getLogger("telegram.ext.dispatcher").setLevel(logging.ERROR)
+    logging.getLogger("telegram.ext.updater").setLevel(logging.ERROR)
+    logging.getLogger("JobQueue").setLevel(logging.ERROR)
 
     # Create the bot
     bot = PoGORaidBot(**args)
