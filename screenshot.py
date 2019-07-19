@@ -4,9 +4,9 @@ import re
 from functools import reduce
 from multiprocessing import Process
 from typing import Tuple, Union
-
+import resources
 import cv2
-import numpy
+import numpy as np
 import pytesseract
 
 from exceptions import *
@@ -16,13 +16,13 @@ Rect = Tuple[Tuple[int, int], Tuple[int, int]]
 
 
 class ScreenshotRaid:
-    def __init__(self, img: Union[numpy.ndarray, bytearray]):
+    def __init__(self, img: Union[np.ndarray, bytearray]):
         self.logger = logging.getLogger(__name__)
 
-        if isinstance(img, numpy.ndarray):
+        if isinstance(img, np.ndarray):
             self._img = img
         elif isinstance(img, bytearray):
-            self._img = cv2.imdecode(numpy.asarray(img, dtype="uint8"), cv2.IMREAD_COLOR)
+            self._img = cv2.imdecode(np.asarray(img, dtype="uint8"), cv2.IMREAD_COLOR)
         else:
             raise Exception  # TODO: create adhoc exception
 
@@ -72,7 +72,7 @@ class ScreenshotRaid:
 
         return (tuple(points[0]), tuple(points[1]))
 
-    def _subset(self, rect: Rect) -> numpy.ndarray:
+    def _subset(self, rect: Rect) -> np.ndarray:
         return self._img[rect[0][1]:rect[1][1], rect[0][0]:rect[1][0]]
 
     def _read_hatching_timer(self) -> datetime.timedelta:
@@ -101,8 +101,8 @@ class ScreenshotRaid:
         raise HatchingTimerUnreadable
 
     def _find_hatching_timer(self) -> Rect:
-        red_lower = numpy.array([150, 100, 230])
-        red_upper = numpy.array([255, 130, 255])
+        red_lower = np.array([150, 100, 230])
+        red_upper = np.array([255, 130, 255])
 
         sub = self._calc_subset(0.35, (0.15, 0.29))
 
@@ -153,8 +153,8 @@ class ScreenshotRaid:
         raise RaidTimerUnreadable
 
     def _find_raid_timer(self) -> Rect:
-        red_lower = numpy.array([-50, 175, 230])
-        red_upper = numpy.array([50, 205, 255])
+        red_lower = np.array([-50, 175, 230])
+        red_upper = np.array([50, 205, 255])
 
         sub = self._calc_subset(((-0.30, -0.02), (0.54, 0.65)))
 
@@ -206,33 +206,70 @@ class ScreenshotRaid:
         # TODO: add the exception case
 
     def _find_level(self) -> int:
+        # For eggs and hatched different parameters are used
         if self.is_egg:
             ht_pos = self.hatching_timer_position
-            sub = ((ht_pos[0][0] - 60, ht_pos[1][1] + 25), (ht_pos[1][0] + 60, ht_pos[1][1] + 95))
+            sub = self._calc_subset(0.55, (ht_pos[1][1] + 15, ht_pos[1][1] + 105))
+            template = resources.LEVEL_EGG
+            mask = resources.LEVEL_MASK_EGG
+            threshold = 0.914
+            matchf = lambda img: cv2.matchTemplate(img, template, cv2.TM_CCORR_NORMED, None, mask)
         else:
-            sub = self._calc_subset(0.5, (0.10, 0.20))  # TODO: improve subset in raid for level
+            sub = self._calc_subset(0.5, (0.10, 0.20))
+            template = resources.LEVEL_HATCHED
+            mask = resources.LEVEL_MASK_HATCHED
+            threshold = 0.94
+            matchf = lambda img: cv2.matchTemplate(img, template, cv2.TM_CCORR_NORMED, None, mask)
 
+        # Get the subset image
         img = self._subset(sub)
 
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        img = cv2.GaussianBlur(img, (3, 3), 3)
-        __, img = cv2.threshold(img, 252, 255, cv2.THRESH_BINARY)
-        img = cv2.resize(img, None, fx=1 / 4, fy=1 / 4, interpolation=cv2.INTER_LINEAR)
-        img = cv2.resize(img, None, fx=4, fy=4, interpolation=cv2.INTER_LINEAR)
-        __, img = cv2.threshold(img, 100, 255, cv2.THRESH_BINARY)
-        img = cv2.dilate(img, None, iterations=6)
+        # Search match of the marker in the gray scale subset
+        res = matchf(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY))
 
-        contours, _ = cv2.findContours(img, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-        contours = list(filter((lambda x: cv2.contourArea(x) > 400), contours))
+        # Filter the results with a threshold
+        loc = np.where(res >= threshold)
 
-        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-        img = cv2.drawContours(img, contours, -1, (255, 0, 0), 2)
+        # The point found must be merged
+        # Number of recurrences of unique points
+        occ = []
+        # Contains unique points
+        matches = []
+        # Parse all the points found
+        for a in np.dstack(loc[::-1])[0]:
+            # Compare all the point with other unique points evaluate the distance
+            for i in range(len(matches)):
+                # If the point is almost near to the unique point merges that
+                if np.linalg.norm(a - matches[i]) <= 10:
+                    matches[i] = (matches[i] * occ[i] + a) // (occ[i] + 1)
+                    occ[i] += 1
+                    a = None
+                    break
+            # if the point is not almost near to another unique point mark it as unique point
+            if a is not None:
+                matches.append(a)
+                occ.append(1)
 
-        self._image_sections["level"] = img  # TODO: remove debug
+        # Calculate the mean of vertical position of the points
+        mean = np.mean([i[1] for i in matches])
+        # Remove all the points that that are too far between themselves
+        marker = list(filter(lambda x: abs(x[1] - mean) < 20, matches))
 
-        return len(contours)
+        # DEBUG
+        w, h = template.shape[::-1]
+        for pt in marker:
+            c = (0, 0, 255)
+            cv2.rectangle(img, (pt[0], pt[1]), (pt[0] + w, pt[1] + h), (0, 0, 255), 2)
+        self._image_sections["level"] = img
 
-        raise LevelNotFound  # TODO: find a method to detect error
+        # Count the matches to calculate the level
+        level = len(matches) if len(matches) < 5 else 5
+
+        # No matches raises a exception
+        if level == 0:
+            raise LevelNotFound
+
+        return level
 
     def _find_time(self) -> datetime.time:
         rx = re.compile(r"([0-2]?[0-9]):([0-5][0-9])")
@@ -319,7 +356,7 @@ class ScreenshotRaid:
                 self._anchors[a] = None
                 continue
 
-            x, y, r = numpy.round(circles[0]).astype("int")[0]
+            x, y, r = np.round(circles[0]).astype("int")[0]
 
             x += sub[0][0]
             y += sub[0][1]
@@ -501,7 +538,7 @@ class ScreenshotRaid:
         for p in processes:
             p.join()
 
-    def _get_anchors_image(self) -> numpy.ndarray:
+    def _get_anchors_image(self) -> np.ndarray:
         img = self._img.copy()
         for i in self._anchors.values():
             try:
