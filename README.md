@@ -1,6 +1,6 @@
 ## Important
 
-**The bot now is in alpha version**
+**The bot now is in beta version**
 
 ## Description
 
