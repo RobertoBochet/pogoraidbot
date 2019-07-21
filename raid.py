@@ -56,7 +56,8 @@ class Raid:
         msg.append("")
         if self.is_hatched:
             msg.append("*Boss*")
-        msg.append("`{}`".format("\U00002B50" * self.level))
+        if self.level is not None:
+            msg.append("`{}`".format("\U00002B50" * self.level))
         msg.append("")
 
         if self.hatching is not None:
