@@ -2,7 +2,6 @@
 import logging
 import os
 import argparse
-import colorlog
 
 from bot import PoGORaidBot
 
