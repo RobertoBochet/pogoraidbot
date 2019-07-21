@@ -251,7 +251,7 @@ class ScreenshotRaid:
                 occ.append(1)
 
         # Calculate the mean of vertical position of the points
-        mean = np.mean([i[1] for i in matches])
+        mean = np.mean([i[1] for i in matches]) if len(matches) > 0 else 0
         # Remove all the points that that are too far between themselves
         marker = list(filter(lambda x: abs(x[1] - mean) < 20, matches))
 
