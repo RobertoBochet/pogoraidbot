@@ -5,6 +5,7 @@ import logging
 import os
 import pickle
 import re
+from typing import Callable
 
 import cv2
 import redis
@@ -88,7 +89,7 @@ class PoGORaidBot:
         # Wait
         self._updater.idle()
 
-    def _must_enabled(func):
+    def _must_enabled(func: Callable[[PoGORaidBot, Bot,Update], bool]):
         def wrapper(self, bot: Bot, update: Update) -> bool:
             try:
                 chat = update.message.chat
@@ -380,7 +381,7 @@ class PoGORaidBot:
                 for s in screen._image_sections:
                     cv2.imwrite(os.path.join(self._debug_folder, "{}-{}.png".format(raid.code, s)),
                                 screen._image_sections[s])
-        except Exception as e:
+        except Exception:
             self.logger.warning("Failed to save sections of image")
 
         message.reply_markdown(raid.to_msg(), quote=True)

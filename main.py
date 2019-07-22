@@ -47,11 +47,8 @@ if __name__ == "__main__":
     try:
         v = args.pop("verbosity_level")
 
-        try:
-            if v >= 4:
-                v = 4
-        except:
-            pass
+        if isinstance(v, int) and v >= 4:
+            v = 4
 
         if v == "DEBUG" or v == 4:
             verbosity_level = logging.DEBUG
