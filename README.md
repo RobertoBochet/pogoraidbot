@@ -36,7 +36,7 @@ To understand how to provide these informations to the bot:
 ```bash
 $ python ./main.py -h
 ```
-```
+```bash
 usage: main.py [-h] [-t TOKEN] [-r HOST] [-p PORT] [-d DEBUG_FOLDER]
 
 optional arguments:
@@ -66,7 +66,7 @@ You can find it in this [repo](https://github.com/RobertoBochet/pogoraidbot-dock
 
 In this project are used the following Python libraries:
 
- - [python-telegram-bot](https://python-telegram-bot.org/) (LGPLv3 License)
- - [opencv-python](https://pypi.org/project/opencv-python/) (MIT License)
- - [pytesseract](https://pypi.org/project/pytesseract/) (GPLv3 License)
- - [redis](https://pypi.org/project/redis/) (MIT License)
+- [python-telegram-bot](https://python-telegram-bot.org/) (LGPLv3 License)
+- [opencv-python](https://pypi.org/project/opencv-python/) (MIT License)
+- [pytesseract](https://pypi.org/project/pytesseract/) (GPLv3 License)
+- [redis](https://pypi.org/project/redis/) (MIT License)
