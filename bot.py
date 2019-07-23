@@ -19,73 +19,74 @@ from screenshot import ScreenshotRaid
 
 
 class PoGORaidBot:
-    class ChatMustBeEnabled:
-        def __init__(self, func: Callable[[PoGORaidBot, Bot, Update], bool]):
-            self.func = func
+    class Decorator:
+        class ChatMustBeEnabled:
+            def __init__(self, func: Callable[[PoGORaidBot, Bot, Update], bool]):
+                self.func = func
 
-        def __get__(self, obj, objtype):
-            """Support instance methods."""
-            return functools.partial(self.__call__, obj)
+            def __get__(self, obj, objtype):
+                """Support instance methods."""
+                return functools.partial(self.__call__, obj)
 
-        def __call__(self, inst: PoGORaidBot, bot: Bot, update: Update) -> bool:
-            try:
-                chat = update.message.chat
-            except AttributeError:
-                chat = update.callback_query.message.chat
+            def __call__(self, inst: PoGORaidBot, bot: Bot, update: Update) -> bool:
+                try:
+                    chat = update.message.chat
+                except AttributeError:
+                    chat = update.callback_query.message.chat
 
-            # Check if this chat is enabled
-            if not inst._db_enabledchats.exists(chat.id):
-                inst.logger.info("Chat {} is not enabled".format(chat.id))
+                # Check if this chat is enabled
+                if not inst._db_enabledchats.exists(chat.id):
+                    inst.logger.info("Chat {} is not enabled".format(chat.id))
 
-                return False
+                    return False
 
-            return self.func(inst, bot, update)
+                return self.func(inst, bot, update)
 
-    class UserMustBeAdmin:
-        def __init__(self, func: Callable[[PoGORaidBot, Bot, Update], bool]):
-            self.func = func
+        class UserMustBeAdmin:
+            def __init__(self, func: Callable[[PoGORaidBot, Bot, Update], bool]):
+                self.func = func
 
-        def __get__(self, obj, objtype):
-            """Support instance methods."""
-            return functools.partial(self.__call__, obj)
+            def __get__(self, obj, objtype):
+                """Support instance methods."""
+                return functools.partial(self.__call__, obj)
 
-        def __call__(self, inst: PoGORaidBot, bot: Bot, update: Update) -> bool:
-            is_admin = False
-            # If the chat is private doesn't check administrators
-            if update.message.chat.type == update.message.chat.PRIVATE:
-                is_admin = True
-            else:
-                # Get the list of administrators of a chat
-                for a in bot.get_chat_administrators(update.message.chat.id):
-                    # Check if the current admin in the user
-                    if a.user.id == update.message.from_user.id:
-                        is_admin = True
-                        break
+            def __call__(self, inst: PoGORaidBot, bot: Bot, update: Update) -> bool:
+                is_admin = False
+                # If the chat is private doesn't check administrators
+                if update.message.chat.type == update.message.chat.PRIVATE:
+                    is_admin = True
+                else:
+                    # Get the list of administrators of a chat
+                    for a in bot.get_chat_administrators(update.message.chat.id):
+                        # Check if the current admin in the user
+                        if a.user.id == update.message.from_user.id:
+                            is_admin = True
+                            break
 
-            # Check if the sender is an admin
-            if not is_admin:
-                inst.logger.info("User {} is not admin".format(update.message.from_user.id))
+                # Check if the sender is an admin
+                if not is_admin:
+                    inst.logger.info("User {} is not admin".format(update.message.from_user.id))
 
-                return False
+                    return False
 
-            return self.func(inst, bot, update)
+                return self.func(inst, bot, update)
 
-    class UserMustBeBotAdmin:
-        def __init__(self, func: Callable[[PoGORaidBot, Bot, Update], bool]):
-            self.func = func
+        class UserMustBeBotAdmin:
+            def __init__(self, func: Callable[[PoGORaidBot, Bot, Update], bool]):
+                self.func = func
 
-        def __get__(self, obj, objtype):
-            """Support instance methods."""
-            return functools.partial(self.__call__, obj)
+            def __get__(self, obj, objtype):
+                """Support instance methods."""
+                return functools.partial(self.__call__, obj)
 
-        def __call__(self, inst: PoGORaidBot, bot: Bot, update: Update) -> bool:
-            # Check if the user is a bot admin
-            if not inst._db_admins.exists(update.message.from_user.id):
-                inst.logger.warning("User {} is not a bot admin".format(update.message.from_user.id))
+            def __call__(self, inst: PoGORaidBot, bot: Bot, update: Update) -> bool:
+                # Check if the user is a bot admin
+                if not inst._db_admins.exists(update.message.from_user.id):
+                    inst.logger.warning("User {} is not a bot admin".format(update.message.from_user.id))
 
-                return False
+                    return False
 
-            return self.func(inst, bot, update)
+                return self.func(inst, bot, update)
 
     def __init__(self, token: str, host: str = "127.0.0.1", port: int = 6379, superadmin: int = None,
                  debug_folder: str = None):
@@ -160,7 +161,7 @@ class PoGORaidBot:
     def _handler_error(self, bot: Bot, update: Update, error: TelegramError) -> None:
         self.logger.warning('Update "{}" caused error "{}"'.format(update, error))
 
-    @ChatMustBeEnabled
+    @Decorator.ChatMustBeEnabled
     def _handler_event_pinned(self, bot: Bot, update: Update) -> bool:
         # Check if the pin is caused by the bot
         if update.message.from_user.id != self._id:
@@ -171,7 +172,7 @@ class PoGORaidBot:
 
         return True
 
-    @ChatMustBeEnabled
+    @Decorator.ChatMustBeEnabled
     def _handler_screenshot(self, bot: Bot, update: Update) -> bool:
         self.logger.info("New image is arrived from {} by {}"
                          .format(update.effective_chat.title, update.effective_user.username))
@@ -185,7 +186,7 @@ class PoGORaidBot:
         self._scan_screenshot(update.message)
         return True
 
-    @ChatMustBeEnabled
+    @Decorator.ChatMustBeEnabled
     def _handler_set_hangout(self, bot: Bot, update: Update) -> bool:
         # Check if the reply is for the bot
         if update.message.reply_to_message.from_user.id != self._id:
@@ -217,7 +218,7 @@ class PoGORaidBot:
 
         return True
 
-    @ChatMustBeEnabled
+    @Decorator.ChatMustBeEnabled
     def _handler_buttons(self, bot: Bot, update: Update) -> bool:
         try:
             # Validate the data
@@ -250,8 +251,8 @@ class PoGORaidBot:
 
         return True
 
-    @ChatMustBeEnabled
-    @UserMustBeAdmin
+    @Decorator.ChatMustBeEnabled
+    @Decorator.UserMustBeAdmin
     def _handler_command_disablescan(self, bot: Bot, update: Update) -> bool:
         # Add current chat to the db of disabled scan
         self._db_disabledscan.set(update.message.chat.id, "")
@@ -261,8 +262,8 @@ class PoGORaidBot:
 
         return True
 
-    @ChatMustBeEnabled
-    @UserMustBeAdmin
+    @Decorator.ChatMustBeEnabled
+    @Decorator.UserMustBeAdmin
     def _handler_command_enablescan(self, bot: Bot, update: Update) -> bool:
         # Remove current chat from the db of disabled scan
         self._db_disabledscan.delete(update.message.chat.id)
@@ -272,7 +273,7 @@ class PoGORaidBot:
 
         return True
 
-    @ChatMustBeEnabled
+    @Decorator.ChatMustBeEnabled
     def _handler_command_scan(self, bot: Bot, update: Update) -> bool:
         self.logger.info("Required scan from {} by {}".format(update.message.chat.id, update.message.from_user.id))
 
@@ -287,7 +288,7 @@ class PoGORaidBot:
 
         return True
 
-    @UserMustBeBotAdmin
+    @Decorator.UserMustBeBotAdmin
     def _handler_command_addadmin(self, bot: Bot, update: Update) -> bool:
         self.logger.info("User {} try to add {} as bot admin".format(update.message.from_user.id,
                                                                      update.message.reply_to_message.from_user.id))
@@ -310,7 +311,7 @@ class PoGORaidBot:
 
         return True
 
-    @UserMustBeBotAdmin
+    @Decorator.UserMustBeBotAdmin
     def _handler_command_removeadmin(self, bot: Bot, update: Update) -> bool:
         self.logger.info("User {} try to remove {} as bot admin".format(update.message.from_user.id,
                                                                         update.message.reply_to_message.from_user.id))
@@ -340,7 +341,7 @@ class PoGORaidBot:
 
         return True
 
-    @UserMustBeBotAdmin
+    @Decorator.UserMustBeBotAdmin
     def _handler_command_enablechat(self, bot: Bot, update: Update) -> bool:
         self.logger.info("Bot admin {} try to enable the chat {}".format(update.message.from_user.id,
                                                                          update.message.chat.id))
@@ -358,7 +359,7 @@ class PoGORaidBot:
 
         return True
 
-    @UserMustBeBotAdmin
+    @Decorator.UserMustBeBotAdmin
     def _handler_command_disablechat(self, bot: Bot, update: Update) -> bool:
         self.logger.info("Bot admin {} try to disable the chat {}".format(update.message.from_user.id,
                                                                           update.message.chat.id))
