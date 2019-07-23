@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import datetime
+import functools
 import logging
 import os
 import pickle
 import re
-from functools import wraps
 from typing import Callable
 
 import cv2
@@ -19,25 +19,28 @@ from raid import Raid
 from screenshot import ScreenshotRaid
 
 
-def _must_enabled(func: Callable[[PoGORaidBot, Bot, Update], bool]):
-    @wraps(func)
-    def wrapper(self, bot: Bot, update: Update) -> bool:
-        try:
-            chat = update.message.chat
-        except AttributeError:
-            chat = update.callback_query.message.chat
-
-        # Check if this chat is enabled
-        if not self._db_enabledchats.exists(chat.id):
-            self.logger.info("Chat {} is not enabled".format(chat.id))
-            return False
-
-        func(self, bot, update)
-
-    return wrapper
-
-
 class PoGORaidBot:
+    class ChatMustBeEnabled:
+        def __init__(self, func: Callable[[PoGORaidBot, Bot, Update], bool]):
+            self.func = func
+
+        def __get__(self, obj, objtype):
+            """Support instance methods."""
+            return functools.partial(self.__call__, obj)
+
+        def __call__(self, inst: PoGORaidBot, bot: Bot, update: Update) -> bool:
+            try:
+                chat = update.message.chat
+            except AttributeError:
+                chat = update.callback_query.message.chat
+
+            # Check if this chat is enabled
+            if not inst._db_enabledchats.exists(chat.id):
+                inst.logger.info("Chat {} is not enabled".format(chat.id))
+                return False
+
+            self.func(inst, bot, update)
+
     def __init__(self, token: str, host: str = "127.0.0.1", port: int = 6379, superadmin: int = None,
                  debug_folder: str = None):
         self.logger = logging.getLogger(__name__)
@@ -111,7 +114,7 @@ class PoGORaidBot:
     def _handler_error(self, bot: Bot, update: Update, error: TelegramError) -> None:
         self.logger.warning('Update "{}" caused error "{}"'.format(update, error))
 
-    @_must_enabled
+    @ChatMustBeEnabled
     def _handler_event_pinned(self, bot: Bot, update: Update) -> bool:
         # Check if the pin is caused by the bot
         if update.message.from_user.id != self._id:
@@ -122,7 +125,7 @@ class PoGORaidBot:
 
         return True
 
-    @_must_enabled
+    @ChatMustBeEnabled
     def _handler_screenshot(self, bot: Bot, update: Update) -> None:
         self.logger.info("New image is arrived from {} by {}"
                          .format(update.effective_chat.title, update.effective_user.username))
@@ -135,7 +138,7 @@ class PoGORaidBot:
         # Scan the screenshot
         self._scan_screenshot(update.message)
 
-    @_must_enabled
+    @ChatMustBeEnabled
     def _handler_set_hangout(self, bot: Bot, update: Update) -> None:
         # Check if the reply is for the bot
         if update.message.reply_to_message.from_user.id != self._id:
@@ -165,7 +168,7 @@ class PoGORaidBot:
         # Updates the message
         self._repost(raid, update.message)
 
-    @_must_enabled
+    @ChatMustBeEnabled
     def _handler_buttons(self, bot: Bot, update: Update) -> None:
         try:
             # Validate the data
@@ -196,7 +199,7 @@ class PoGORaidBot:
         # Updates the message
         self._repost(raid, update.callback_query.message)
 
-    @_must_enabled
+    @ChatMustBeEnabled
     def _handler_command_disablescan(self, bot: Bot, update: Update) -> None:
         self.logger.info("Disable scan for chat {}".format(update.message.chat.id))
 
@@ -210,7 +213,7 @@ class PoGORaidBot:
 
         update.message.chat.send_message("The scan now is disabled")
 
-    @_must_enabled
+    @ChatMustBeEnabled
     def _handler_command_enablescan(self, bot: Bot, update: Update) -> None:
         self.logger.info("Enable scan for chat {}".format(update.message.chat.id))
 
@@ -224,7 +227,7 @@ class PoGORaidBot:
 
         update.message.chat.send_message("The scan now is enabled")
 
-    @_must_enabled
+    @ChatMustBeEnabled
     def _handler_command_scan(self, bot: Bot, update: Update) -> None:
         self.logger.info("Required scan from {} by {}".format(update.message.chat.id, update.message.from_user.id))
 
