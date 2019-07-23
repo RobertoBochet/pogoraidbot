@@ -5,8 +5,9 @@ import logging
 import os
 import pickle
 import re
-from typing import Callable
 from functools import wraps
+from typing import Callable
+
 import cv2
 import redis
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode, Update, TelegramError, Bot, Message, Chat, \
@@ -16,6 +17,24 @@ from telegram.ext.filters import Filters
 
 from raid import Raid
 from screenshot import ScreenshotRaid
+
+
+def _must_enabled(func: Callable[[PoGORaidBot, Bot, Update], bool]):
+    @wraps(func)
+    def wrapper(self, bot: Bot, update: Update) -> bool:
+        try:
+            chat = update.message.chat
+        except AttributeError:
+            chat = update.callback_query.message.chat
+
+        # Check if this chat is enabled
+        if not self._db_enabledchats.exists(chat.id):
+            self.logger.info("Chat {} is not enabled".format(chat.id))
+            return False
+
+        func(self, bot, update)
+
+    return wrapper
 
 
 class PoGORaidBot:
@@ -88,24 +107,6 @@ class PoGORaidBot:
         self._updater.start_polling()
         # Wait
         self._updater.idle()
-
-    @staticmethod
-    def _must_enabled(func: Callable[[PoGORaidBot, Bot, Update], bool]):
-        @wraps(func)
-        def wrapper(self, bot: Bot, update: Update) -> bool:
-            try:
-                chat = update.message.chat
-            except AttributeError:
-                chat = update.callback_query.message.chat
-
-            # Check if this chat is enabled
-            if not self._db_enabledchats.exists(chat.id):
-                self.logger.info("Chat {} is not enabled".format(chat.id))
-                return False
-
-            func(self, bot, update)
-
-        return wrapper
 
     def _handler_error(self, bot: Bot, update: Update, error: TelegramError) -> None:
         self.logger.warning('Update "{}" caused error "{}"'.format(update, error))
