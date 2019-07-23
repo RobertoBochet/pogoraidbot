@@ -67,7 +67,7 @@ optional arguments:
 An example:
 
 ```bash
-$ python ./main.py -t [BOT_TOKEN] -r 127.0.0.1 -p 6379
+$ python3 ./main.py -t [BOT_TOKEN] -r 127.0.0.1 -p 6379
 ```
 
 The parameters can be provided also as environment variables.

@@ -10,6 +10,7 @@ import numpy as np
 import pytesseract
 
 import resources
+from cached import Cached
 from exceptions import *
 from raid import Raid
 
@@ -271,7 +272,7 @@ class ScreenshotRaid:
 
         return level
 
-    def _find_time(self) -> Tuple[int, int]:
+    def _find_time(self) -> datetime.time:
         try:
             gym_image = self._anchors["gym_image"]
             ym = gym_image[1] - gym_image[2] - 10
@@ -298,7 +299,7 @@ class ScreenshotRaid:
             result = re.search(r"([0-2]?[0-9]):([0-5][0-9])", text)
 
             try:
-                return (int(result.group(1)), int(result.group(2)))
+                return datetime.time(int(result.group(1)), int(result.group(2)))
             except:
                 pass
 
@@ -350,166 +351,132 @@ class ScreenshotRaid:
             self._anchors[a] = (x, y, r)
 
     @property
-    def hatching_timer_position(self) -> Rect:
-        try:
-            return self._anchors["hatching_timer"]
-        except KeyError:
-            pass
-        self._anchors["hatching_timer"] = None
+    @Cached
+    def hatching_timer_position(self) -> Union[Rect, None]:
         try:
             self._anchors["hatching_timer"] = self._find_hatching_timer()
+            return self._anchors["hatching_timer"]
         except HatchingTimerNotFound:
-            pass
-        return self._anchors["hatching_timer"]
+            return None
 
     @property
-    def raid_timer_position(self) -> Rect:
-        try:
-            return self._anchors["raid_timer"]
-        except KeyError:
-            pass
-        self._anchors["raid_timer"] = None
+    @Cached
+    def raid_timer_position(self) -> Union[Rect, None]:
         try:
             self._anchors["raid_timer"] = self._find_raid_timer()
+            return self._anchors["raid_timer"]
         except RaidTimerNotFound:
-            pass
-        return self._anchors["raid_timer"]
+            return None
 
     @property
-    def timer(self) -> datetime.timedelta:
+    @Cached
+    def timer(self) -> Union[datetime.timedelta, None]:
         return self.hatching_timer if self.is_egg else self.raid_timer
 
     @property
-    def hatching_timer(self) -> datetime.timedelta:
+    @Cached
+    def hatching_timer(self) -> Union[datetime.timedelta, None]:
         try:
-            return self._hatching_timer
-        except AttributeError:
-            pass
-        self._hatching_timer = None
-        try:
-            self._hatching_timer = self._read_hatching_timer()
+            return self._read_hatching_timer()
         except HatchingTimerException:
-            pass
-        return self._hatching_timer
+            return None
 
     @property
-    def raid_timer(self) -> datetime.timedelta:
+    @Cached
+    def raid_timer(self) -> Union[datetime.timedelta, None]:
         try:
-            return self._raid_timer
-        except AttributeError:
-            pass
-        self._raid_timer = None
-        try:
-            self._raid_timer = self._read_raid_timer()
+            return self._read_raid_timer()
         except RaidTimerException:
-            pass
-        return self._raid_timer
+            return None
 
     @property
-    def gym_name(self) -> str:
+    @Cached
+    def gym_name(self) -> Union[str, None]:
         try:
-            return self._gym_name
-        except AttributeError:
-            pass
-        self._gym_name = None
-        try:
-            self._gym_name = self._find_gym_name()
+            return self._find_gym_name()
         except GymNameNotFound:
-            pass
-        return self._gym_name
+            return None
 
     @property
-    def level(self) -> int:
+    @Cached
+    def level(self) -> Union[int, None]:
         try:
-            return self._level
-        except AttributeError:
-            pass
-        self._level = None
-        try:
-            self._level = self._find_level()
+            return self._find_level()
         except LevelNotFound:
-            pass
-        return self._level
+            return None
 
     @property
-    def time(self) -> datetime.time:
+    @Cached
+    def time(self) -> Union[datetime.time, None]:
         try:
-            return self._time
-        except AttributeError:
-            pass
-        self._time = None
-        try:
-            self._time = self._find_time()
+            return self._find_time()
         except TimeNotFound:
-            pass
-        return self._time
+            return None
 
     @property
+    @Cached
     def is_raid(self) -> bool:
         # If there are not at least 4 anchors the screenshot is not a raid
         if self._anchors_available < 4:
             return False
 
         # Try to find the hatching timer
-        try:
-            self._find_hatching_timer()
+        if self.hatching_timer_position is not None:
             return True
-        except HatchingTimerNotFound:
-            pass
 
         # Try to find the raid timer
-        try:
-            self._find_raid_timer()
+        if self.raid_timer_position is not None:
             return True
-        except RaidTimerNotFound:
-            pass
 
         # If there is neither hatching timer nor raid timer then the screenshot is not a raid
         return False
 
     @property
+    @Cached
     def is_egg(self) -> bool:
         return self.hatching_timer is not None
 
     @property
+    @Cached
     def is_hatched(self) -> bool:
         return self.hatching_timer is None
 
     @property
-    def hatching(self) -> datetime.time:
-        try:
-            return (datetime.combine(datetime.date(1970, 1, 1), self.time) + self.hatching_timer).time()
-        except:
-            pass
-        try:
-            return (datetime.datetime.now() + self.hatching_timer).time()
-        except:
+    @Cached
+    def hatching(self) -> Union[datetime.time, None]:
+        if self.hatching_timer is None:
             return None
 
+        if self.time is not None:
+            return (datetime.combine(datetime.date(1970, 1, 1), self.time) + self.hatching_timer).time()
+        else:
+            return (datetime.datetime.now() + self.hatching_timer).time()
+
     @property
-    def end(self) -> datetime.time:
+    @Cached
+    def end(self) -> Union[datetime.time, None]:
+        # Get time or use system time
+        time = datetime.combine(datetime.date(1970, 1, 1), self.time) \
+            if self.time is not None else datetime.datetime.now()
+
         if self.is_hatched:
-            try:
-                time = datetime.combine(datetime.date(1970, 1, 1), self.time)
-            except AttributeError:
-                time = datetime.datetime.now()
-            try:
+            if self.raid_timer is not None:
                 return (time + self.raid_timer).time()
-            except:
+            else:
                 return None
         else:
-            try:
-                return (datetime.datetime.combine(datetime.date(1970, 1, 1), self.hatching)
-                        + datetime.timedelta(minutes=45)).time()
-            except:
+            if self.hatching_timer is not None:
+                return (time + self.hatching_timer + datetime.timedelta(minutes=45)).time()
+            else:
                 return None
 
     def to_raid(self) -> Raid:
         if self.is_hatched:
-            return Raid(gym_name=self.gym_name, level=self.level, end=self.end, boss=None, is_hatched=True)
+            return Raid(gym_name=self.gym_name, level=self.level, end=self.end, boss=None, is_hatched=True,
+                        is_aprx_time=(True if self.time is None else False))
         else:
             return Raid(gym_name=self.gym_name, level=self.level, hatching=self.hatching, end=self.end,
-                        is_hatched=False)
+                        is_hatched=False, is_aprx_time=(True if self.time is None else False))
 
     def compute(self) -> None:
         processes = [
