@@ -1,3 +1,5 @@
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/ffb75961a5854f7d9d429921ea71084b)](https://www.codacy.com/app/RobertoBochet/pogoraidbot?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=RobertoBochet/pogoraidbot&amp;utm_campaign=Badge_Grade)
+
 ## Important
 
 **The bot is now in beta version**
