@@ -60,7 +60,7 @@ if __name__ == "__main__":
             verbosity_level = logging.WARNING
         elif v == "ERROR":
             verbosity_level = logging.ERROR
-    except:
+    except KeyError:
         verbosity_level = logging.ERROR
 
     # Set warning logging level for the module
