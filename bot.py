@@ -10,8 +10,7 @@ from typing import Callable
 
 import cv2
 import redis
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode, Update, TelegramError, Bot, Message, Chat, \
-    User
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode, Update, TelegramError, Bot, Message
 from telegram.ext import Updater, MessageHandler, CallbackQueryHandler, CommandHandler
 from telegram.ext.filters import Filters
 
@@ -37,6 +36,7 @@ class PoGORaidBot:
             # Check if this chat is enabled
             if not inst._db_enabledchats.exists(chat.id):
                 inst.logger.info("Chat {} is not enabled".format(chat.id))
+
                 return False
 
             return self.func(inst, bot, update)
@@ -65,6 +65,24 @@ class PoGORaidBot:
             # Check if the sender is an admin
             if not is_admin:
                 inst.logger.info("User {} is not admin".format(update.message.from_user.id))
+
+                return False
+
+            return self.func(inst, bot, update)
+
+    class UserMustBeBotAdmin:
+        def __init__(self, func: Callable[[PoGORaidBot, Bot, Update], bool]):
+            self.func = func
+
+        def __get__(self, obj, objtype):
+            """Support instance methods."""
+            return functools.partial(self.__call__, obj)
+
+        def __call__(self, inst: PoGORaidBot, bot: Bot, update: Update) -> bool:
+            # Check if the user is a bot admin
+            if not inst._db_admins.exists(update.message.from_user.id):
+                inst.logger.warning("User {} is not a bot admin".format(update.message.from_user.id))
+
                 return False
 
             return self.func(inst, bot, update)
@@ -154,23 +172,24 @@ class PoGORaidBot:
         return True
 
     @ChatMustBeEnabled
-    def _handler_screenshot(self, bot: Bot, update: Update) -> None:
+    def _handler_screenshot(self, bot: Bot, update: Update) -> bool:
         self.logger.info("New image is arrived from {} by {}"
                          .format(update.effective_chat.title, update.effective_user.username))
 
         # Check if scan is disabled for this group
         if self._db_disabledscan.exists(update.effective_chat.id):
             self.logger.info("Screenshots scan for chat {} is disabled".format(update.effective_chat.id))
-            return
+            return False
 
         # Scan the screenshot
         self._scan_screenshot(update.message)
+        return True
 
     @ChatMustBeEnabled
-    def _handler_set_hangout(self, bot: Bot, update: Update) -> None:
+    def _handler_set_hangout(self, bot: Bot, update: Update) -> bool:
         # Check if the reply is for the bot
         if update.message.reply_to_message.from_user.id != self._id:
-            return
+            return False
 
         try:
             # Search the code in the bot message
@@ -179,7 +198,7 @@ class PoGORaidBot:
             raid = pickle.loads(self._db_raids.get(code))
         except Exception:  # TODO: improve except
             self.logger.warning("A invalid to bot message reply was come")
-            return
+            return False
 
         self.logger.info("A reply to bot message was come")
 
@@ -196,8 +215,10 @@ class PoGORaidBot:
         # Updates the message
         self._repost(raid, update.message)
 
+        return True
+
     @ChatMustBeEnabled
-    def _handler_buttons(self, bot: Bot, update: Update) -> None:
+    def _handler_buttons(self, bot: Bot, update: Update) -> bool:
         try:
             # Validate the data
             result = re.match(r"([a-zA-Z0-9]{8}):([afr])", update.callback_query.data)
@@ -207,7 +228,7 @@ class PoGORaidBot:
             op = result.group(2)
         except Exception:  # TODO: improve except
             self.logger.warning("A invalid callback query was come")
-            return
+            return False
 
         self.logger.info("A callback query was come")
 
@@ -227,45 +248,49 @@ class PoGORaidBot:
         # Updates the message
         self._repost(raid, update.callback_query.message)
 
+        return True
+
     @ChatMustBeEnabled
     @UserMustBeAdmin
-    def _handler_command_disablescan(self, bot: Bot, update: Update) -> None:
+    def _handler_command_disablescan(self, bot: Bot, update: Update) -> bool:
         # Add current chat to the db of disabled scan
         self._db_disabledscan.set(update.message.chat.id, "")
 
         self.logger.info("Disable scan for chat {}".format(update.message.chat.id))
         update.message.chat.send_message("The scan now is disabled")
 
+        return True
+
     @ChatMustBeEnabled
     @UserMustBeAdmin
-    def _handler_command_enablescan(self, bot: Bot, update: Update) -> None:
+    def _handler_command_enablescan(self, bot: Bot, update: Update) -> bool:
         # Remove current chat from the db of disabled scan
         self._db_disabledscan.delete(update.message.chat.id)
 
         self.logger.info("Enable scan for chat {}".format(update.message.chat.id))
         update.message.chat.send_message("The scan now is enabled")
 
+        return True
+
     @ChatMustBeEnabled
-    def _handler_command_scan(self, bot: Bot, update: Update) -> None:
+    def _handler_command_scan(self, bot: Bot, update: Update) -> bool:
         self.logger.info("Required scan from {} by {}".format(update.message.chat.id, update.message.from_user.id))
 
         # Check if it is a reply to screenshot
         if update.message.reply_to_message is None or len(update.message.reply_to_message.photo) == 0:
             update.message.reply_text("It must be a reply to a screenshot")
             self.logger.info("Invalid scan command")
-            return
+            return False
 
         # Scan the screenshot
         self._scan_screenshot(update.message.reply_to_message)
 
+        return True
+
+    @UserMustBeBotAdmin
     def _handler_command_addadmin(self, bot: Bot, update: Update) -> bool:
         self.logger.info("User {} try to add {} as bot admin".format(update.message.from_user.id,
                                                                      update.message.reply_to_message.from_user.id))
-
-        # Check if the user is a bot admin
-        if not self._db_admins.exists(update.message.from_user.id):
-            self.logger.warning("User {} is not a bot admin".format(update.message.from_user.id))
-            return False
 
         # Check if the cited user is already a bot admin
         if self._db_admins.exists(update.message.reply_to_message.from_user.id):
@@ -285,14 +310,10 @@ class PoGORaidBot:
 
         return True
 
+    @UserMustBeBotAdmin
     def _handler_command_removeadmin(self, bot: Bot, update: Update) -> bool:
         self.logger.info("User {} try to remove {} as bot admin".format(update.message.from_user.id,
                                                                         update.message.reply_to_message.from_user.id))
-
-        # Check if the user is a bot admin
-        if not self._db_admins.exists(update.message.from_user.id):
-            self.logger.warning("User {} is not a bot admin".format(update.message.from_user.id))
-            return False
 
         # Check if the mentioned user is the superadmin
         if self._superadmin == update.message.reply_to_message.from_user.id:
@@ -319,14 +340,10 @@ class PoGORaidBot:
 
         return True
 
+    @UserMustBeBotAdmin
     def _handler_command_enablechat(self, bot: Bot, update: Update) -> bool:
-        self.logger.info("User {} try to enable the chat {}".format(update.message.from_user.id,
-                                                                    update.message.chat.id))
-
-        # Check if the user is a bot admin
-        if not self._db_admins.exists(update.message.from_user.id):
-            self.logger.warning("User {} is not a bot admin".format(update.message.from_user.id))
-            return False
+        self.logger.info("Bot admin {} try to enable the chat {}".format(update.message.from_user.id,
+                                                                         update.message.chat.id))
 
         # Check if this chat is already enabled
         if self._db_enabledchats.exists(update.message.chat.id):
@@ -341,14 +358,10 @@ class PoGORaidBot:
 
         return True
 
+    @UserMustBeBotAdmin
     def _handler_command_disablechat(self, bot: Bot, update: Update) -> bool:
-        self.logger.info("User {} try to disable the chat {}".format(update.message.from_user.id,
-                                                                     update.message.chat.id))
-
-        # Check if the user is a bot admin
-        if not self._db_admins.exists(update.message.from_user.id):
-            self.logger.warning("User {} is not a bot admin".format(update.message.from_user.id))
-            return False
+        self.logger.info("Bot admin {} try to disable the chat {}".format(update.message.from_user.id,
+                                                                          update.message.chat.id))
 
         # Check if this chat is not enabled
         if not self._db_enabledchats.exists(update.message.chat.id):
@@ -363,7 +376,7 @@ class PoGORaidBot:
 
         return True
 
-    def _scan_screenshot(self, message: Message):
+    def _scan_screenshot(self, message: Message) -> None:
         # Get the highest resolution image
         img = message.photo[-1].get_file().download_as_bytearray()
 
