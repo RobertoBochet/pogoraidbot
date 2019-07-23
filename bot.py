@@ -39,7 +39,35 @@ class PoGORaidBot:
                 inst.logger.info("Chat {} is not enabled".format(chat.id))
                 return False
 
-            self.func(inst, bot, update)
+            return self.func(inst, bot, update)
+
+    class UserMustBeAdmin:
+        def __init__(self, func: Callable[[PoGORaidBot, Bot, Update], bool]):
+            self.func = func
+
+        def __get__(self, obj, objtype):
+            """Support instance methods."""
+            return functools.partial(self.__call__, obj)
+
+        def __call__(self, inst: PoGORaidBot, bot: Bot, update: Update) -> bool:
+            is_admin = False
+            # If the chat is private doesn't check administrators
+            if update.message.chat.type == update.message.chat.PRIVATE:
+                is_admin = True
+            else:
+                # Get the list of administrators of a chat
+                for a in bot.get_chat_administrators(update.message.chat.id):
+                    # Check if the current admin in the user
+                    if a.user.id == update.message.from_user.id:
+                        is_admin = True
+                        break
+
+            # Check if the sender is an admin
+            if not is_admin:
+                inst.logger.info("User {} is not admin".format(update.message.from_user.id))
+                return False
+
+            return self.func(inst, bot, update)
 
     def __init__(self, token: str, host: str = "127.0.0.1", port: int = 6379, superadmin: int = None,
                  debug_folder: str = None):
@@ -200,31 +228,21 @@ class PoGORaidBot:
         self._repost(raid, update.callback_query.message)
 
     @ChatMustBeEnabled
+    @UserMustBeAdmin
     def _handler_command_disablescan(self, bot: Bot, update: Update) -> None:
-        self.logger.info("Disable scan for chat {}".format(update.message.chat.id))
-
-        # Check if the sender is an admin
-        if not self._is_admin(update.message.chat, update.message.from_user):
-            self.logger.info("User {} is not admin".format(update.message.from_user.id))
-            return
-
         # Add current chat to the db of disabled scan
         self._db_disabledscan.set(update.message.chat.id, "")
 
+        self.logger.info("Disable scan for chat {}".format(update.message.chat.id))
         update.message.chat.send_message("The scan now is disabled")
 
     @ChatMustBeEnabled
+    @UserMustBeAdmin
     def _handler_command_enablescan(self, bot: Bot, update: Update) -> None:
-        self.logger.info("Enable scan for chat {}".format(update.message.chat.id))
-
-        # Check if the sender is an admin
-        if not self._is_admin(update.message.chat, update.message.from_user):
-            self.logger.info("User {} is not admin".format(update.message.from_user.id))
-            return
-
         # Remove current chat from the db of disabled scan
         self._db_disabledscan.delete(update.message.chat.id)
 
+        self.logger.info("Enable scan for chat {}".format(update.message.chat.id))
         update.message.chat.send_message("The scan now is enabled")
 
     @ChatMustBeEnabled
@@ -344,19 +362,6 @@ class PoGORaidBot:
         update.message.reply_markdown("This chat is no longer enabled")
 
         return True
-
-    def _is_admin(self, chat: Chat, user: User) -> bool:
-        # If the chat is private doesn't check administrators
-        if chat.type == chat.PRIVATE:
-            return True
-
-        # Get the list of administrators of a chat
-        for a in self._bot.get_chat_administrators(chat.id):
-            # Check if the current admin in the user
-            if a.user.id == user.id:
-                return True
-
-        return False
 
     def _scan_screenshot(self, message: Message):
         # Get the highest resolution image
