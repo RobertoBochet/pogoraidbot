@@ -10,6 +10,14 @@ import textwrap
 
 
 @dataclass
+class Participant:
+    id: int
+    username: str
+    is_flyer: bool = False
+    number: int = 1
+
+
+@dataclass
 class Raid:
     code: str = field(
         default_factory=lambda: "".join(random.choice(string.ascii_letters + string.digits) for i in range(8)))
@@ -89,11 +97,3 @@ class Raid:
         msg.append("`[{}]`".format(self.code))
 
         return "\n".join(msg)
-
-
-@dataclass
-class Participant:
-    id: int
-    username: str
-    is_flyer: bool = False
-    number: int = 1

@@ -6,7 +6,7 @@ import os
 import pickle
 import re
 from typing import Callable
-
+from functools import wraps
 import cv2
 import redis
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode, Update, TelegramError, Bot, Message, Chat, \
@@ -89,7 +89,9 @@ class PoGORaidBot:
         # Wait
         self._updater.idle()
 
-    def _must_enabled(func: Callable[[PoGORaidBot, Bot,Update], bool]):
+    @staticmethod
+    def _must_enabled(func: Callable[[PoGORaidBot, Bot, Update], bool]):
+        @wraps(func)
         def wrapper(self, bot: Bot, update: Update) -> bool:
             try:
                 chat = update.message.chat
@@ -143,14 +145,14 @@ class PoGORaidBot:
             code = re.search(r"\[([a-zA-Z0-9]{8})\]", update.message.reply_to_message.text).group(1)
             # Try to retrieve the raid information
             raid = pickle.loads(self._db_raids.get(code))
-        except:
+        except Exception:  # TODO: improve except
             self.logger.warning("A invalid to bot message reply was come")
             return
 
         self.logger.info("A reply to bot message was come")
 
         # Find the new hangout
-        result = re.search(r"([0-2]?[0-9])[:\.,]([0-5]?[0-9])", update.message.text)
+        result = re.search(r"([0-2]?[0-9])[:.,]([0-5]?[0-9])", update.message.text)
         # Set new hangout
         raid.hangout = datetime.time(int(result.group(1)), int(result.group(2)))
 
@@ -171,7 +173,7 @@ class PoGORaidBot:
             raid = pickle.loads(self._db_raids.get(result.group(1)))
             # Get operation
             op = result.group(2)
-        except:
+        except Exception:  # TODO: improve except
             self.logger.warning("A invalid callback query was come")
             return
 
@@ -367,8 +369,6 @@ class PoGORaidBot:
 
         # Get the raid dataclass
         raid = screen.to_raid()
-
-        # self.logger.debug(raid)
 
         # Save the raid in the db
         self._db_raids.setex(raid.code, 60 * 60 * 6, pickle.dumps(raid))
