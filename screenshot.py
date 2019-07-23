@@ -4,11 +4,12 @@ import re
 from functools import reduce
 from multiprocessing import Process
 from typing import Tuple, Union
-import resources
+
 import cv2
 import numpy as np
 import pytesseract
 
+import resources
 from exceptions import *
 from raid import Raid
 
@@ -238,10 +239,10 @@ class ScreenshotRaid:
         # Parse all the points found
         for a in np.dstack(loc[::-1])[0]:
             # Compare all the point with other unique points evaluate the distance
-            for i in range(len(matches)):
+            for i, match in enumerate(matches):
                 # If the point is almost near to the unique point merges that
-                if np.linalg.norm(a - matches[i]) <= 10:
-                    matches[i] = (matches[i] * occ[i] + a) // (occ[i] + 1)
+                if np.linalg.norm(a - match) <= 10:
+                    matches[i] = (match * occ[i] + a) // (occ[i] + 1)
                     occ[i] += 1
                     a = None
                     break
@@ -258,7 +259,6 @@ class ScreenshotRaid:
         # DEBUG
         w, h = template.shape[::-1]
         for pt in marker:
-            c = (0, 0, 255)
             cv2.rectangle(img, (pt[0], pt[1]), (pt[0] + w, pt[1] + h), (0, 0, 255), 2)
         self._image_sections["level"] = img
 
@@ -271,22 +271,7 @@ class ScreenshotRaid:
 
         return level
 
-    def _find_time(self) -> datetime.time:
-        rx = re.compile(r"([0-2]?[0-9]):([0-5][0-9])")
-        subs = [
-            0.2,
-            (-0.2, 1.0),
-            1.0
-        ]
-        """
-            [
-                lambda img: cv2.cvtColor(img, cv2.COLOR_BGR2GRAY),
-                lambda img: cv2.GaussianBlur(img, (3, 3), 0),
-                lambda img: cv2.resize(img, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC),
-                lambda img: img
-            ]
-        ]
-        """
+    def _find_time(self) -> Tuple[int, int]:
         try:
             gym_image = self._anchors["gym_image"]
             ym = gym_image[1] - gym_image[2] - 10
@@ -469,14 +454,14 @@ class ScreenshotRaid:
         try:
             self._find_hatching_timer()
             return True
-        except:
+        except HatchingTimerNotFound:
             pass
 
         # Try to find the raid timer
         try:
             self._find_raid_timer()
             return True
-        except:
+        except RaidTimerNotFound:
             pass
 
         # If there is neither hatching timer nor raid timer then the screenshot is not a raid
@@ -506,7 +491,7 @@ class ScreenshotRaid:
         if self.is_hatched:
             try:
                 time = datetime.combine(datetime.date(1970, 1, 1), self.time)
-            except:
+            except AttributeError:
                 time = datetime.datetime.now()
             try:
                 return (time + self.raid_timer).time()
