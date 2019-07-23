@@ -412,6 +412,7 @@ class PoGORaidBot:
         self.logger.info("A reply was sent")
 
     def _repost(self, raid: Raid, message: Message) -> None:
+        user_message = None
         if message.from_user.id != self._id:
             user_message = message
             message = message.reply_to_message
@@ -420,15 +421,13 @@ class PoGORaidBot:
         # Check if the old message was pinned
         try:
             pinned = self._bot.get_chat(message.chat.id).pinned_message.message_id == message.message_id
-        except:
+        except AttributeError:
             pinned = False
 
         # Delete the old bot message and the reply if it exists
         self._bot.delete_message(message.chat.id, message.message_id)
-        try:
+        if user_message is not None:
             self._bot.delete_message(message.chat.id, user_message.message_id)
-        except:
-            pass
 
         # Send new message
         new_msg = message.chat.send_message(raid.to_msg(),
