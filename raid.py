@@ -24,6 +24,7 @@ class Raid:
     code: str = field(
         default_factory=lambda: "".join(random.choice(string.ascii_letters + string.digits) for i in range(8)))
     gym_name: str = None
+    is_ex: bool = False
     level: int = None
     is_hatched: bool = False
     end: datetime.time = None
@@ -64,6 +65,9 @@ class Raid:
 
     def to_msg(self) -> str:
         TEMPLATE = Template(
+            "{% if raid.is_ex %}"
+                "*EX* "
+            "{% endif %}"
             "{{ raid.gym_name|wordwrap(25) }}\n"
             "\n"
             "{% if raid.is_hatched %}"
