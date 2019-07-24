@@ -423,7 +423,7 @@ class PoGORaidBot:
             pinned = self._bot.get_chat(message.chat.id).pinned_message.message_id == message.message_id
         except AttributeError:
             pinned = False
-            
+
         try:
             # Delete the old bot message and the reply if it exists
             self._bot.delete_message(message.chat.id, message.message_id)

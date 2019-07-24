@@ -3,7 +3,6 @@ from __future__ import annotations
 import datetime
 import random
 import string
-import textwrap
 from dataclasses import dataclass, field
 from functools import reduce
 from typing import Dict
@@ -61,22 +60,20 @@ class Raid:
 
     @property
     def participants_count(self):
-        return reduce((lambda x,y: x + y), [p.number for _, p in self.participants.items()], 0)
+        return reduce((lambda x, y: x + y), [p.number for _, p in self.participants.items()], 0)
 
     def to_msg(self) -> str:
         TEMPLATE = Template(
-            "{{ raid.gym_name }}\n"
+            "{{ raid.gym_name|wordwrap(25) }}\n"
             "\n"
             "{% if raid.is_hatched %}"
                 "*{{ raid.boss }}*\n"
             "{% endif %}"
             "{% if raid.level is not none %}"
-                "{% for i in range(0, raid.level) %}"
-                    "\U00002B50"
-                "{% endfor %}"
-            "\n"
-            "\n"
+                "{% for i in range(0, raid.level) %}\U00002B50{% endfor %}"
+                "\n"
             "{% endif %}"
+            "\n"
             "{% if raid.hatching is not none %}"
                 "`Hatching:   {{ raid.hatching.strftime('%H:%M') }}`\n"
             "{% endif %}"
