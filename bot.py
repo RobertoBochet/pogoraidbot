@@ -10,7 +10,7 @@ from typing import Callable
 
 import cv2
 import redis
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode, Update, TelegramError, Bot, Message
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode, Update, TelegramError, Bot, Message, error
 from telegram.ext import Updater, MessageHandler, CallbackQueryHandler, CommandHandler
 from telegram.ext.filters import Filters
 
@@ -423,11 +423,14 @@ class PoGORaidBot:
             pinned = self._bot.get_chat(message.chat.id).pinned_message.message_id == message.message_id
         except AttributeError:
             pinned = False
-
-        # Delete the old bot message and the reply if it exists
-        self._bot.delete_message(message.chat.id, message.message_id)
-        if user_message is not None:
-            self._bot.delete_message(message.chat.id, user_message.message_id)
+            
+        try:
+            # Delete the old bot message and the reply if it exists
+            self._bot.delete_message(message.chat.id, message.message_id)
+            if user_message is not None:
+                self._bot.delete_message(message.chat.id, user_message.message_id)
+        except error.BadRequest:
+            self.logger.info("The bot hasn't the permission to delete messages")
 
         # Send new message
         new_msg = message.chat.send_message(raid.to_msg(),
