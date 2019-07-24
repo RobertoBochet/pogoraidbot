@@ -3,10 +3,13 @@ from __future__ import annotations
 import datetime
 import random
 import string
-from dataclasses import dataclass, field
-from typing import Dict
-from telegram import User
 import textwrap
+from dataclasses import dataclass, field
+from functools import reduce
+from typing import Dict
+
+from jinja2 import Template
+from telegram import User
 
 
 @dataclass
@@ -56,44 +59,45 @@ class Raid:
             return True
         return False
 
+    @property
+    def participants_count(self):
+        return reduce((lambda x,y: x + y), [p.number for _, p in self.participants.items()], 0)
+
     def to_msg(self) -> str:
-        msg = []
+        TEMPLATE = Template(
+            "{{ raid.gym_name }}\n"
+            "\n"
+            "{% if raid.is_hatched %}"
+                "*{{ raid.boss }}*\n"
+            "{% endif %}"
+            "{% if raid.level is not none %}"
+                "{% for i in range(0, raid.level) %}"
+                    "\U00002B50"
+                "{% endfor %}"
+            "\n"
+            "\n"
+            "{% endif %}"
+            "{% if raid.hatching is not none %}"
+                "`Hatching:   {{ raid.hatching.strftime('%H:%M') }}`\n"
+            "{% endif %}"
+            "{% if raid.end is not none %}"
+                "`End:        {{ raid.end.strftime('%H:%M') }}`\n"
+            "{% endif %}"
+            "{% if raid.hangout is not none %}"
+                "`Hangout:    {{ raid.hangout.strftime('%H:%M') }}`\n"
+            "{% endif %}"
+            "{% if raid.participants|count > 0 %}"
+                "`─────────────────────`\n"
+                "{% for id, p in raid.participants.items() %}"
+                    "[{{ p.username }}](tg://user?id={{ id }})"
+                    "{% if p.is_fly %}\U0001F6E9{% endif %}"
+                    "{% if p.number > 1 %} +{{ p.number - 1 }} {% endif %}"
+                    "\n"
+                "{% endfor %}"
+                "`─────────────────────`\n"
+                "*{{ raid.participants_count }}* participants\n"
+            "{% endif %}"
+            "`[{{ raid.code }}]`"
+        )
 
-        msg.append("\n".join(textwrap.wrap("_{}_".format(self.gym_name), 25)))
-
-        msg.append("")
-        if self.is_hatched:
-            msg.append("*Boss*")
-        if self.level is not None:
-            msg.append("`{}`".format("\U00002B50" * self.level))
-        msg.append("")
-
-        if self.hatching is not None:
-            msg.append("`Hatching:      {}{}`"
-                       .format("~" if self.is_aprx_time else " ", self.hatching.strftime("%H:%M")))
-
-        if self.end is not None:
-            msg.append("`End:           {}{}`"
-                       .format("~" if self.is_aprx_time else " ", self.end.strftime("%H:%M")))
-
-        if self.hangout is not None:
-            msg.append("`Hangout:        {}`".format(self.hangout.strftime("%H:%M")))
-
-        if len(self.participants) is not 0:
-            c = 0
-            msg.append("`─────────────────────`")
-
-            for p in self.participants:
-                v = self.participants[p]
-                msg.append("[{}](tg://user?id={}){} {}".format(
-                    v.username, p,
-                    "\U0001F6E9" if v.is_flyer else "",
-                    "" if v.number == 1 else "+{}".format(v.number - 1)))
-                c += v.number
-
-            msg.append("`─────────────────────`")
-            msg.append("*{}* participants".format(c))
-
-        msg.append("`[{}]`".format(self.code))
-
-        return "\n".join(msg)
+        return TEMPLATE.render(raid=self)

@@ -86,3 +86,4 @@ In this project are used the following Python libraries:
 -   [opencv-python](https://pypi.org/project/opencv-python/) (MIT License)
 -   [pytesseract](https://pypi.org/project/pytesseract/) (GPLv3 License)
 -   [redis](https://pypi.org/project/redis/) (MIT License)
+-   [jinja2](https://pypi.org/project/Jinja2/) (BSD License)
