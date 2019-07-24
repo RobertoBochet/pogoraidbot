@@ -70,7 +70,7 @@ class Raid:
             "{% endif %}"
             "{{ raid.gym_name|wordwrap(25) }}\n"
             "\n"
-            "{% if raid.is_hatched %}"
+            "{% if raid.is_hatched and raid.boss is not none %}"
                 "*{{ raid.boss }}*\n"
             "{% endif %}"
             "{% if raid.level is not none %}"
