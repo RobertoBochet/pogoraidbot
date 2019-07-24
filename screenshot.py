@@ -207,6 +207,63 @@ class ScreenshotRaid:
         return text
         # TODO: add the exception case
 
+    def _find_ex_tag(self) -> Rect:
+        # Prepare a range of colors to search the ex label in HSV color space
+        color = np.array([133, 138, 189])
+        color_offset = np.array([50, 15, 13])
+        color_range = color - color_offset, color + color_offset
+
+        # Calculate a subset of coordinates in the screenshot where the ex label could be
+        sub = self._calc_subset((-230, 1.0), (30, 100))
+
+        # Create the subset of the screenshot, filter it and move it in the HSV color space
+        img = self._subset(sub)
+        img = cv2.GaussianBlur(img, (5, 5), 5)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+
+        # Create a mask of the image in the range of colors and dilate it with the aim of reduce the noise
+        mask = cv2.inRange(img, *color_range)
+        mask = cv2.dilate(mask, np.ones((5, 5), np.uint8))
+
+        self._image_sections["ex_tag_mask"] = mask  # TODO: remove debug
+
+        # Try to search contours of mask
+        contours, _ = cv2.findContours(mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+
+        if len(contours) > 0:
+            # Search the biggest blob and calculate the bounding rectangle
+            x, y, w, h = cv2.boundingRect(
+                reduce((lambda x, y: x if cv2.contourArea(x) > cv2.contourArea(y) else y), contours))
+
+            # Return the position of the bounding rectangle of the biggest blob
+            return ((sub[0][0] + x, sub[0][1] + y), (sub[0][0] + x + w, sub[0][1] + y + h))
+
+        # It wasn't found a candidate as ex label
+        raise ExTagNotFound
+
+    def _check_ex_tag(self) -> bool:
+        # Check if it was found a candidate as ex label
+        if self.ex_tag_position is None:
+            raise ExTagNotFound
+
+        # Get a sub image of the possible ex label and binarize it
+        img = self._subset(self.ex_tag_position)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        __, img = cv2.threshold(img, 210, 255, cv2.THRESH_BINARY_INV)
+
+        self._image_sections["ex_tag"] = img  # TODO: remove debug
+
+        # Read the sub image
+        text = pytesseract.image_to_string(img, config=('--oem 1 --psm 3'))
+
+        self.logger.debug("raw ex_tag «{}»".format(text))
+
+        # If it contains "EX" string the gym will be considered ex
+        if re.match(r".*EX.*", text, re.IGNORECASE):
+            return True
+
+        raise ExTagUnreadable
+
     def _find_level(self) -> int:
         # For eggs and hatched different parameters are used
         if self.is_egg:
@@ -370,6 +427,14 @@ class ScreenshotRaid:
 
     @property
     @Cached
+    def ex_tag_position(self) -> Union[Rect, None]:
+        try:
+            return self._find_ex_tag()
+        except ExTagNotFound:
+            return None
+
+    @property
+    @Cached
     def timer(self) -> Union[datetime.timedelta, None]:
         return self.hatching_timer if self.is_egg else self.raid_timer
 
@@ -396,6 +461,16 @@ class ScreenshotRaid:
             return self._find_gym_name()
         except GymNameNotFound:
             return None
+
+    @property
+    @Cached
+    def is_ex(self) -> bool:
+        try:
+            if self._check_ex_tag():
+                self._anchors["ex_tag"] = self.ex_tag_position
+                return True
+        except ExTagException:
+            return False
 
     @property
     @Cached
@@ -448,7 +523,7 @@ class ScreenshotRaid:
             return None
 
         if self.time is not None:
-            return (datetime.combine(datetime.date(1970, 1, 1), self.time) + self.hatching_timer).time()
+            return (datetime.datetime.combine(datetime.date(1970, 1, 1), self.time) + self.hatching_timer).time()
         else:
             return (datetime.datetime.now() + self.hatching_timer).time()
 
@@ -456,7 +531,7 @@ class ScreenshotRaid:
     @Cached
     def end(self) -> Union[datetime.time, None]:
         # Get time or use system time
-        time = datetime.combine(datetime.date(1970, 1, 1), self.time) \
+        time = datetime.datetime.combine(datetime.date(1970, 1, 1), self.time) \
             if self.time is not None else datetime.datetime.now()
 
         if self.is_hatched:
@@ -472,11 +547,21 @@ class ScreenshotRaid:
 
     def to_raid(self) -> Raid:
         if self.is_hatched:
-            return Raid(gym_name=self.gym_name, level=self.level, end=self.end, boss=None, is_hatched=True,
+            return Raid(gym_name=self.gym_name,
+                        level=self.level,
+                        end=self.end,
+                        boss=None,
+                        is_hatched=True,
+                        is_ex=self.is_ex,
                         is_aprx_time=(True if self.time is None else False))
         else:
-            return Raid(gym_name=self.gym_name, level=self.level, hatching=self.hatching, end=self.end,
-                        is_hatched=False, is_aprx_time=(True if self.time is None else False))
+            return Raid(gym_name=self.gym_name,
+                        level=self.level,
+                        hatching=self.hatching,
+                        end=self.end,
+                        is_hatched=False,
+                        is_ex=self.is_ex,
+                        is_aprx_time=(True if self.time is None else False))
 
     def compute(self) -> None:
         processes = [

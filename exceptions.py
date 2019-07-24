@@ -42,6 +42,18 @@ class RaidTimerUnreadable(RaidTimerException, TimerUnreadable):
     pass
 
 
+class ExTagException(Exception):
+    pass
+
+
+class ExTagNotFound(ExTagException, ValueNotFound):
+    pass
+
+
+class ExTagUnreadable(ExTagException, ValueUnreadable):
+    pass
+
+
 class GymNameNotFound(ValueNotFound):
     pass
 
