@@ -10,7 +10,7 @@ import numpy as np
 import pytesseract
 
 import resources
-from cached import Cached
+from cachedmethod import CachedMethod
 from exceptions import *
 from raid import Raid
 
@@ -408,7 +408,7 @@ class ScreenshotRaid:
             self._anchors[a] = (x, y, r)
 
     @property
-    @Cached
+    @CachedMethod
     def hatching_timer_position(self) -> Union[Rect, None]:
         try:
             self._anchors["hatching_timer"] = self._find_hatching_timer()
@@ -417,7 +417,7 @@ class ScreenshotRaid:
             return None
 
     @property
-    @Cached
+    @CachedMethod
     def raid_timer_position(self) -> Union[Rect, None]:
         try:
             self._anchors["raid_timer"] = self._find_raid_timer()
@@ -426,7 +426,7 @@ class ScreenshotRaid:
             return None
 
     @property
-    @Cached
+    @CachedMethod
     def ex_tag_position(self) -> Union[Rect, None]:
         try:
             return self._find_ex_tag()
@@ -434,12 +434,12 @@ class ScreenshotRaid:
             return None
 
     @property
-    @Cached
+    @CachedMethod
     def timer(self) -> Union[datetime.timedelta, None]:
         return self.hatching_timer if self.is_egg else self.raid_timer
 
     @property
-    @Cached
+    @CachedMethod
     def hatching_timer(self) -> Union[datetime.timedelta, None]:
         try:
             return self._read_hatching_timer()
@@ -447,7 +447,7 @@ class ScreenshotRaid:
             return None
 
     @property
-    @Cached
+    @CachedMethod
     def raid_timer(self) -> Union[datetime.timedelta, None]:
         try:
             return self._read_raid_timer()
@@ -455,7 +455,7 @@ class ScreenshotRaid:
             return None
 
     @property
-    @Cached
+    @CachedMethod
     def gym_name(self) -> Union[str, None]:
         try:
             return self._find_gym_name()
@@ -463,7 +463,7 @@ class ScreenshotRaid:
             return None
 
     @property
-    @Cached
+    @CachedMethod
     def is_ex(self) -> bool:
         try:
             if self._check_ex_tag():
@@ -473,7 +473,7 @@ class ScreenshotRaid:
             return False
 
     @property
-    @Cached
+    @CachedMethod
     def level(self) -> Union[int, None]:
         try:
             return self._find_level()
@@ -481,7 +481,7 @@ class ScreenshotRaid:
             return None
 
     @property
-    @Cached
+    @CachedMethod
     def time(self) -> Union[datetime.time, None]:
         try:
             return self._find_time()
@@ -489,7 +489,7 @@ class ScreenshotRaid:
             return None
 
     @property
-    @Cached
+    @CachedMethod
     def is_raid(self) -> bool:
         # If there are not at least 4 anchors the screenshot is not a raid
         if self._anchors_available < 4:
@@ -507,17 +507,17 @@ class ScreenshotRaid:
         return False
 
     @property
-    @Cached
+    @CachedMethod
     def is_egg(self) -> bool:
         return self.hatching_timer is not None
 
     @property
-    @Cached
+    @CachedMethod
     def is_hatched(self) -> bool:
         return self.hatching_timer is None
 
     @property
-    @Cached
+    @CachedMethod
     def hatching(self) -> Union[datetime.time, None]:
         if self.hatching_timer is None:
             return None
@@ -528,7 +528,7 @@ class ScreenshotRaid:
             return (datetime.datetime.now() + self.hatching_timer).time()
 
     @property
-    @Cached
+    @CachedMethod
     def end(self) -> Union[datetime.time, None]:
         # Get time or use system time
         time = datetime.datetime.combine(datetime.date(1970, 1, 1), self.time) \
