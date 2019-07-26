@@ -89,3 +89,4 @@ In this project are used the following Python libraries:
 -   [pytesseract](https://pypi.org/project/pytesseract/) (GPLv3 License)
 -   [redis](https://pypi.org/project/redis/) (MIT License)
 -   [jinja2](https://pypi.org/project/Jinja2/) (BSD License)
+-   [requests](https://pypi.org/project/requests/) (Apache 2.0 License)

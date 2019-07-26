@@ -5,9 +5,9 @@ import logging
 from dataclasses import dataclass
 from difflib import SequenceMatcher
 from typing import Union, List
-from urllib.error import HTTPError
 from urllib.parse import urlparse
-from urllib.request import urlopen
+
+import requests
 
 gyms: Union[List[Gym], None] = None
 
@@ -27,7 +27,7 @@ def find_gym(gym_name: str) -> Union[Gym, None]:
         return None
 
     # Minimal value required to consider similar two gyms
-    minimal_value = 0.6
+    minimal_value = 0.8
 
     current_most_similar_value = 0
     current_most_similar = None
@@ -35,6 +35,7 @@ def find_gym(gym_name: str) -> Union[Gym, None]:
     # Compare the gym_name with each gym in the list and find the most similar
     for g in gyms:
         r = SequenceMatcher(None, g.name, gym_name).ratio()
+        logger.debug("{} - {}".format(r, g.name))
         if r > current_most_similar_value and r > minimal_value:
             current_most_similar_value = r
             current_most_similar = g
@@ -52,7 +53,8 @@ def load_gyms_list(gyms_file: str) -> bool:
         # Check if the resource is remote
         if bool(urlparse(gyms_file).scheme):
             # Load the remote json
-            data = json.loads(urlopen(gyms_file).read())
+            response = requests.get(gyms_file)
+            data = response.json()
 
         else:
             # Open the gyms file and load it as json
@@ -62,10 +64,10 @@ def load_gyms_list(gyms_file: str) -> bool:
     except FileNotFoundError:
         logger.warning("Failed to load the gyms list: file not found")
         return False
-    except HTTPError:
+    except requests.exceptions.ConnectionError:
         logger.warning("Failed to load the gyms list: an HTTP error occurred")
         return False
-    except json.decoder.JSONDecodeError:
+    except ValueError:
         logger.warning("Failed to load the gyms list: failed to decode json")
         return False
 
