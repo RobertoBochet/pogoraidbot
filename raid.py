@@ -5,10 +5,13 @@ import random
 import string
 from dataclasses import dataclass, field
 from functools import reduce
-from typing import Dict
+from typing import Dict, Union
 
 from jinja2 import Template
 from telegram import User
+
+import gym
+from cachedmethod import CachedMethod
 
 
 @dataclass
@@ -60,43 +63,54 @@ class Raid:
         return False
 
     @property
-    def participants_count(self):
+    def participants_count(self) -> int:
         return reduce((lambda x, y: x + y), [p.number for _, p in self.participants.items()], 0)
+
+    @property
+    @CachedMethod
+    def gym(self) -> Union[gym.Gym, None]:
+        return gym.find_gym(self.gym_name)
 
     def to_msg(self) -> str:
         TEMPLATE = Template(
             "{% if raid.is_ex %}"
-                "*EX* "
+            "*EX* "
             "{% endif %}"
+            "{% if raid.gym is not none %}"
+            "[{{ raid.gym.name|wordwrap(25) }}](http://maps.google.com/maps?"
+            "q={{ raid.gym.latitude }},{{ raid.gym.longitude }}"
+            "&ll={{ raid.gym.latitude }},{{ raid.gym.longitude }}"
+            "&z=17)\n"
+            "{% else %}"
             "{{ raid.gym_name|wordwrap(25) }}\n"
+            "{% endif %}"
             "\n"
             "{% if raid.is_hatched and raid.boss is not none %}"
-                "*{{ raid.boss }}*\n"
+            "*{{ raid.boss }}*\n"
             "{% endif %}"
             "{% if raid.level is not none %}"
-                "{% for i in range(0, raid.level) %}\U00002B50{% endfor %}"
-                "\n"
+            "{% for i in range(0, raid.level) %}\U00002B50{% endfor %}\n"
             "{% endif %}"
             "\n"
             "{% if raid.hatching is not none %}"
-                "`Hatching:   {{ raid.hatching.strftime('%H:%M') }}`\n"
+            "`Hatching:   {% if raid.is_aprx_time %}~{% endif %}{{ raid.hatching.strftime('%H:%M') }}`\n"
             "{% endif %}"
             "{% if raid.end is not none %}"
-                "`End:        {{ raid.end.strftime('%H:%M') }}`\n"
+            "`End:        {% if raid.is_aprx_time %}~{% endif %}{{ raid.end.strftime('%H:%M') }}`\n"
             "{% endif %}"
             "{% if raid.hangout is not none %}"
-                "`Hangout:    {{ raid.hangout.strftime('%H:%M') }}`\n"
+            "`Hangout:    {% if raid.is_aprx_time %} {% endif %}{{ raid.hangout.strftime('%H:%M') }}`\n"
             "{% endif %}"
             "{% if raid.participants|count > 0 %}"
-                "`─────────────────────`\n"
-                "{% for id, p in raid.participants.items() %}"
-                    "[{{ p.username }}](tg://user?id={{ id }})"
-                    "{% if p.is_fly %}\U0001F6E9{% endif %}"
-                    "{% if p.number > 1 %} +{{ p.number - 1 }} {% endif %}"
-                    "\n"
-                "{% endfor %}"
-                "`─────────────────────`\n"
-                "*{{ raid.participants_count }}* participants\n"
+            "`─────────────────────`\n"
+            "{% for id, p in raid.participants.items() %}"
+            "[{{ p.username }}](tg://user?id={{ id }})"
+            "{% if p.is_fly %}\U0001F6E9{% endif %}"
+            "{% if p.number > 1 %} +{{ p.number - 1 }} {% endif %}"
+            "\n"
+            "{% endfor %}"
+            "`─────────────────────`\n"
+            "*{{ raid.participants_count }}* participants\n"
             "{% endif %}"
             "`[{{ raid.code }}]`"
         )

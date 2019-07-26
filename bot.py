@@ -14,6 +14,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode, Upda
 from telegram.ext import Updater, MessageHandler, CallbackQueryHandler, CommandHandler
 from telegram.ext.filters import Filters
 
+import gym
 from raid import Raid
 from screenshot import ScreenshotRaid
 
@@ -89,7 +90,7 @@ class PoGORaidBot:
                 return self.func(inst, bot, update)
 
     def __init__(self, token: str, host: str = "127.0.0.1", port: int = 6379, superadmin: int = None,
-                 debug_folder: str = None):
+                 gyms_file: str = None, debug_folder: str = None):
         self.logger = logging.getLogger(__name__)
 
         # Init and test redis connection
@@ -104,6 +105,10 @@ class PoGORaidBot:
         # Add superadmin to the admins db
         if self._superadmin is not None:
             self._db_admins.set(self._superadmin, "superadmin")
+
+        # Load gyms list
+        if gyms_file is not None:
+            gym.load_gyms_list(gyms_file)
 
         # Save debug folder
         self._debug_folder = debug_folder
@@ -407,7 +412,7 @@ class PoGORaidBot:
         except Exception:
             self.logger.warning("Failed to save sections of image")
 
-        message.reply_markdown(raid.to_msg(), quote=True)
+        message.reply_markdown(raid.to_msg(), disable_web_page_preview=True, quote=True)
 
         self.logger.info("A reply was sent")
 
@@ -434,6 +439,7 @@ class PoGORaidBot:
 
         # Send new message
         new_msg = message.chat.send_message(raid.to_msg(),
+                                            disable_web_page_preview=True,
                                             parse_mode=ParseMode.MARKDOWN,
                                             reply_markup=InlineKeyboardMarkup([[
                                                 InlineKeyboardButton("\U0001F42F", callback_data=raid.code + ":a"),

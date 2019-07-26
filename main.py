@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
+import argparse
 import logging
 import os
-import argparse
 
 from bot import PoGORaidBot
 
@@ -16,6 +16,7 @@ if __name__ == "__main__":
     env["host"] = os.getenv("REDIS_HOST")
     env["port"] = os.getenv("REDIS_PORT")
     env["superadmin"] = os.getenv("SUPERADMIN")
+    env["gyms_file"] = os.getenv("GYMS_FILE")
     env["debug_folder"] = os.getenv("DEBUG_FOLDER")
     env["verbosity_level"] = os.getenv("VERBOSITY_LEVEL")
 
@@ -26,6 +27,8 @@ if __name__ == "__main__":
     parser.add_argument("-r", "--host", dest="host", help="redis host")
     parser.add_argument("-p", "--port", dest="port", help="redis port")
     parser.add_argument("-a", "--superadmin", dest="superadmin", help="superadmin's id")
+    parser.add_argument("-g", "--gyms-file", dest="gyms_file",
+                        help="JSON file contains gyms and their coordinates. It can be also provided with http(s)")
     parser.add_argument("-d", "--debug-folder", dest="debug_folder", help="debug folder")
     parser.add_argument("-v", dest="verbosity_level", action="count", default=None,
                         help="number of -v specifics level of verbosity")
@@ -66,6 +69,7 @@ if __name__ == "__main__":
     # Set warning logging level for the module
     logging.getLogger("bot").setLevel(verbosity_level)
     logging.getLogger("screenshot").setLevel(verbosity_level)
+    logging.getLogger("gym").setLevel(verbosity_level)
     logging.getLogger("telegram").setLevel(logging.ERROR)
     logging.getLogger("telegram.ext.dispatcher").setLevel(logging.ERROR)
     logging.getLogger("telegram.ext.updater").setLevel(logging.ERROR)

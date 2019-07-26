@@ -46,7 +46,7 @@ $ python ./main.py -h
 
 ```bash
 usage: main.py [-h] [-t TOKEN] [-r HOST] [-p PORT] [-a SUPERADMIN]
-               [-d DEBUG_FOLDER] [-v] [--verbose] [--debug]
+               [-g GYMS_FILE] [-d DEBUG_FOLDER] [-v] [--verbose] [--debug]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -56,12 +56,14 @@ optional arguments:
   -p PORT, --port PORT  redis port
   -a SUPERADMIN, --superadmin SUPERADMIN
                         superadmin\'s id
+  -g GYMS_FILE, --gyms-file GYMS_FILE
+                        JSON file contains gyms and their coordinates. It can
+                        be also provided with http(s)
   -d DEBUG_FOLDER, --debug-folder DEBUG_FOLDER
                         debug folder
   -v                    number of -v specifics level of verbosity
   --verbose             equal to -vvv
   --debug               equal to -vvvv
-
 ```
 
 An example:
