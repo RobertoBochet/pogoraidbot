@@ -3,3 +3,4 @@ opencv-python
 pytesseract
 redis
 jinja2
+requests
