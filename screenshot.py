@@ -11,7 +11,9 @@ import pytesseract
 
 import resources
 from cachedmethod import CachedMethod
-from exceptions import *
+from exceptions import HatchingTimerNotFound, HatchingTimerUnreadable, RaidTimerNotFound, RaidTimerUnreadable, \
+    ExTagNotFound, ExTagUnreadable, LevelNotFound, TimeNotFound, HatchingTimerException, RaidTimerException, \
+    GymNameNotFound, ExTagException
 from raid import Raid
 
 Rect = Tuple[Tuple[int, int], Tuple[int, int]]
