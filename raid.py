@@ -105,7 +105,7 @@ class Raid:
             "`─────────────────────`\n"
             "{% for id, p in raid.participants.items() %}"
             "[{{ p.username }}](tg://user?id={{ id }})"
-            "{% if p.is_fly %}\U0001F6E9{% endif %}"
+            "{% if p.is_flyer %}\U0001F6E9{% endif %}"
             "{% if p.number > 1 %} +{{ p.number - 1 }} {% endif %}"
             "\n"
             "{% endfor %}"

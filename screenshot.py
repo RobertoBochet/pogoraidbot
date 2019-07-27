@@ -145,7 +145,7 @@ class ScreenshotRaid:
 
         self.logger.debug("raw raid_timer «{}»".format(text))
 
-        result = re.search(r"([0-3])[:\.]([0-5][0-9])[:\.]([0-5][0-9])", text)
+        result = re.search(r"([0-3])[:.]([0-5][0-9])[:.]([0-5][0-9])", text)
 
         try:
             self.logger.debug("raid_timer {}:{}:{}".format(result.group(1), result.group(2), result.group(3)))
@@ -261,7 +261,7 @@ class ScreenshotRaid:
 
         self.logger.debug("raw ex_tag «{}»".format(text))
 
-        # If it contains "EX" string the gym will be considered ex
+        # If it is enough similar to ex label the gym will be considered ex
         if max([SequenceMatcher(None, "ex raid", text.lower()).ratio(),
                 SequenceMatcher(None, "raid ex", text.lower()).ratio()]) > 0.4:
             return True
@@ -554,7 +554,7 @@ class ScreenshotRaid:
             return Raid(gym_name=self.gym_name,
                         level=self.level,
                         end=self.end,
-                        boss=None,
+                        boss=None,  # TODO: Add feature to extract the boss name
                         is_hatched=True,
                         is_ex=self.is_ex,
                         is_aprx_time=(True if self.time is None else False))
