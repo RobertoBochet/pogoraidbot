@@ -72,8 +72,6 @@ An example:
 $ python3 ./main.py -t [BOT_TOKEN] -r 127.0.0.1 -p 6379
 ```
 
-The parameters can be provided also as environment variables.
-
 ## Dockerized version \[recommended]
 
 If you don't want to manage the this bot as a standalone application you can use the dockerized version.
