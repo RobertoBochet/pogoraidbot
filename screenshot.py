@@ -1,6 +1,7 @@
 import datetime
 import logging
 import re
+from difflib import SequenceMatcher
 from functools import reduce
 from multiprocessing import Process
 from typing import Tuple, Union
@@ -261,7 +262,8 @@ class ScreenshotRaid:
         self.logger.debug("raw ex_tag «{}»".format(text))
 
         # If it contains "EX" string the gym will be considered ex
-        if re.match(r".*EX.*", text, re.IGNORECASE):
+        if max([SequenceMatcher(None, "ex raid", text.lower()).ratio(),
+                SequenceMatcher(None, "raid ex", text.lower()).ratio()]) > 0.4:
             return True
 
         raise ExTagUnreadable
