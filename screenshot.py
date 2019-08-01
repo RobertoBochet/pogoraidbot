@@ -19,7 +19,7 @@ import resources
 from cachedmethod import CachedMethod
 from exceptions import HatchingTimerNotFound, HatchingTimerUnreadable, RaidTimerNotFound, RaidTimerUnreadable, \
     ExTagNotFound, ExTagUnreadable, LevelNotFound, TimeNotFound, HatchingTimerException, RaidTimerException, \
-    GymNameNotFound, ExTagException
+    GymNameNotFound, ExTagException, PokemonRaidsListNotAvailable, BossNotFound
 from raid import Raid
 
 Rect = Tuple[Tuple[int, int], Tuple[int, int]]
@@ -265,6 +265,13 @@ class ScreenshotRaid:
 
         return text
         # TODO: add the exception case
+
+    def _find_boss(self) -> str:
+        # Check if a list of available pokémon in raids was provided
+        if raids is None:
+            raise PokemonRaidsListNotAvailable
+        
+        return ""
 
     def _find_ex_tag(self) -> Rect:
         # Prepare a range of colors to search the ex label in HSV color space
@@ -524,6 +531,14 @@ class ScreenshotRaid:
 
     @property
     @CachedMethod
+    def boss(self) -> Union[str, None]:
+        try:
+            return self._find_boss()
+        except (PokemonRaidsListNotAvailable, BossNotFound):
+            return None
+
+    @property
+    @CachedMethod
     def is_ex(self) -> bool:
         try:
             if self._check_ex_tag():
@@ -610,7 +625,7 @@ class ScreenshotRaid:
             return Raid(gym_name=self.gym_name,
                         level=self.level,
                         end=self.end,
-                        boss=None,  # TODO: Add feature to extract the boss name
+                        boss=self.boss,
                         is_hatched=True,
                         is_ex=self.is_ex,
                         is_aprx_time=(True if self.time is None else False))

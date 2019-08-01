@@ -60,3 +60,11 @@ class GymNameNotFound(ValueNotFound):
 
 class LevelNotFound(ValueNotFound):
     pass
+
+
+class PokemonRaidsListNotAvailable(Exception):
+    pass
+
+
+class BossNotFound(ValueNotFound):
+    pass
