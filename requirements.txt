@@ -4,3 +4,4 @@ pytesseract
 redis
 jinja2
 requests
+schema

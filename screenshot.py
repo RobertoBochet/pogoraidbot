@@ -1,14 +1,19 @@
 import datetime
+import json
 import logging
 import re
 from difflib import SequenceMatcher
 from functools import reduce
 from multiprocessing import Process
-from typing import Tuple, Union
+from typing import Tuple, Union, Dict, List
+from urllib.parse import urlparse
 
+import schema
 import cv2
 import numpy as np
 import pytesseract
+import requests
+from schema import Optional, Schema
 
 import resources
 from cachedmethod import CachedMethod
@@ -19,10 +24,61 @@ from raid import Raid
 
 Rect = Tuple[Tuple[int, int], Tuple[int, int]]
 
+logger = logging.getLogger(__name__)
+
+raids: Union[Dict[int, List[str]], None] = None
+
+raids_schema = Schema({
+    Optional("1"): [str],
+    Optional("2"): [str],
+    Optional("3"): [str],
+    Optional("4"): [str],
+    Optional("5"): [str]
+})
+
+
+def load_raids_list(raids_file: str) -> bool:
+    global raids
+    raids = None
+
+    logger.info("Try to load the list of available pokémon in raids")
+
+    try:
+        # Check if the resource is remote
+        if bool(urlparse(raids_file).scheme):
+            # Load the remote json
+            response = requests.get(raids_file)
+            data = response.json()
+
+        else:
+            # Open the pokémon raids file and load it as json
+            with open(raids_file, 'r') as f:
+                data = json.load(f)
+
+    except FileNotFoundError:
+        logger.warning("Failed to load the available raids list: file not found")
+        return False
+    except requests.exceptions.ConnectionError:
+        logger.warning("Failed to load the available raids list: an HTTP error occurred")
+        return False
+    except ValueError:
+        logger.warning("Failed to load the available raids list: failed to decode json")
+        return False
+
+    # Check if the list is valid
+    if raids_schema.is_valid(data) is False:
+        logger.warning("The raids file is in a wrong format")
+        return False
+
+    raids = data
+
+    logger.info("Pokémon raids list is loaded")
+
+    return True
+
 
 class ScreenshotRaid:
     def __init__(self, img: Union[np.ndarray, bytearray]):
-        self.logger = logging.getLogger(__name__)
 
         if isinstance(img, np.ndarray):
             self._img = img
@@ -91,18 +147,18 @@ class ScreenshotRaid:
 
         text = pytesseract.image_to_string(img, config=('--oem 1 --psm 3'))
 
-        self.logger.debug("raw hatching_timer «{}»".format(text))
+        logger.debug("raw hatching_timer «{}»".format(text))
 
         result = re.search(r"([0-3])[:\.]([0-5][0-9])[:\.]([0-5][0-9])", text)
 
         try:
-            self.logger.debug("hatching_timer {}:{}:{}".format(result.group(1), result.group(2), result.group(3)))
+            logger.debug("hatching_timer {}:{}:{}".format(result.group(1), result.group(2), result.group(3)))
             return datetime.timedelta(hours=int(result.group(1)), minutes=int(result.group(2)),
                                       seconds=int(result.group(3)))
         except Exception:
             pass
 
-        self.logger.debug("hatching timer unreadable")
+        logger.debug("hatching timer unreadable")
         raise HatchingTimerUnreadable
 
     def _find_hatching_timer(self) -> Rect:
@@ -129,7 +185,7 @@ class ScreenshotRaid:
         except:
             pass
 
-        self.logger.debug("hatching timer notfound")
+        logger.debug("hatching timer notfound")
         raise HatchingTimerNotFound
 
     def _read_raid_timer(self) -> datetime.timedelta:
@@ -143,18 +199,18 @@ class ScreenshotRaid:
 
         text = pytesseract.image_to_string(img, config=('--oem 1 --psm 3'))
 
-        self.logger.debug("raw raid_timer «{}»".format(text))
+        logger.debug("raw raid_timer «{}»".format(text))
 
         result = re.search(r"([0-3])[:.]([0-5][0-9])[:.]([0-5][0-9])", text)
 
         try:
-            self.logger.debug("raid_timer {}:{}:{}".format(result.group(1), result.group(2), result.group(3)))
+            logger.debug("raid_timer {}:{}:{}".format(result.group(1), result.group(2), result.group(3)))
             return datetime.timedelta(hours=int(result.group(1)), minutes=int(result.group(2)),
                                       seconds=int(result.group(3)))
         except Exception:
             pass
 
-        self.logger.debug("raid timer unreadable")
+        logger.debug("raid timer unreadable")
         raise RaidTimerUnreadable
 
     def _find_raid_timer(self) -> Rect:
@@ -181,7 +237,7 @@ class ScreenshotRaid:
         except:
             pass
 
-        self.logger.debug("raid timer not found")
+        logger.debug("raid timer not found")
         raise RaidTimerNotFound
 
     def _find_gym_name(self) -> str:
@@ -198,7 +254,7 @@ class ScreenshotRaid:
         __, img = cv2.threshold(img, 220, 255, cv2.THRESH_BINARY_INV)
         text = pytesseract.image_to_string(img, config=('--oem 1 --psm 3'))
 
-        self.logger.debug("raw gym_name «{}»".format(text))
+        logger.debug("raw gym_name «{}»".format(text))
 
         text = text.rstrip().replace('\n', ' ')
         text = " ".join(text.split())
@@ -259,7 +315,7 @@ class ScreenshotRaid:
         # Read the sub image
         text = pytesseract.image_to_string(img, config=('--oem 1 --psm 3'))
 
-        self.logger.debug("raw ex_tag «{}»".format(text))
+        logger.debug("raw ex_tag «{}»".format(text))
 
         # If it is enough similar to ex label the gym will be considered ex
         if max([SequenceMatcher(None, "ex raid", text.lower()).ratio(),
