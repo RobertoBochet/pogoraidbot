@@ -5,15 +5,14 @@ import re
 from difflib import SequenceMatcher
 from functools import reduce
 from multiprocessing import Process
-from typing import Tuple, Union, Dict, List
+from typing import Tuple, Union, Dict
 from urllib.parse import urlparse
 
-import schema
 import cv2
 import numpy as np
 import pytesseract
 import requests
-from schema import Optional, Schema
+from schema import Schema, Or
 
 import resources
 from cachedmethod import CachedMethod
@@ -26,14 +25,10 @@ Rect = Tuple[Tuple[int, int], Tuple[int, int]]
 
 logger = logging.getLogger(__name__)
 
-raids: Union[Dict[int, List[str]], None] = None
+raids: Union[Dict[str, Union[int, None]], None] = None
 
 raids_schema = Schema({
-    Optional("1"): [str],
-    Optional("2"): [str],
-    Optional("3"): [str],
-    Optional("4"): [str],
-    Optional("5"): [str]
+    str: Or(1, 2, 3, 4, 5)
 })
 
 
@@ -270,8 +265,53 @@ class ScreenshotRaid:
         # Check if a list of available pokémon in raids was provided
         if raids is None:
             raise PokemonRaidsListNotAvailable
-        
-        return ""
+
+        # Force the calc of the level if it isn't already calculated
+        _ = self.level
+
+        # Calculate the subset based on the level position
+        try:
+            (_, _), (_, y) = self._anchors["level"]
+            sub = self._calc_subset(0.8, (y + 85, y + 215))
+        except:
+            sub = self._calc_subset((200, -160), (60, 150))
+
+        # Create the subset of the screenshot and filter it
+        img = self._subset(sub)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        __, img = cv2.threshold(img, 240, 255, cv2.THRESH_BINARY_INV)
+
+        self._image_sections["boss"] = img  # TODO: remove debug
+
+        # Find the text in the subset
+        text = pytesseract.image_to_string(img, config=('--oem 1 --psm 3'))
+
+        logger.debug("raw boss «{}»".format(text))
+
+        # Removed new line from the text
+        text = text.rstrip().replace('\n', ' ')
+        text = " ".join(text.split())
+
+        # Minimal value required to consider similar two gyms
+        minimal_value = 0.4
+
+        current_most_similar_value = 0
+        current_most_similar: Union[str, None] = None
+
+        # Compare the text with each pokemon in the list and find the most similar
+        for p in raids:
+            r = SequenceMatcher(None, text, p).ratio()
+            if r > current_most_similar_value and r > minimal_value:
+                current_most_similar_value = r
+                current_most_similar = p
+
+        logging.debug(current_most_similar)
+
+        # Check if a valid boss was found
+        if current_most_similar is None:
+            raise BossNotFound
+
+        return current_most_similar
 
     def _find_ex_tag(self) -> Rect:
         # Prepare a range of colors to search the ex label in HSV color space
@@ -386,6 +426,18 @@ class ScreenshotRaid:
         for pt in marker:
             cv2.rectangle(img, (pt[0], pt[1]), (pt[0] + w, pt[1] + h), (0, 0, 255), 2)
         self._image_sections["level"] = img
+
+        # Save the anchor
+        self._anchors["level"] = (
+            (
+                min([pt[0] for pt in marker]) + sub[0][0],
+                min([pt[1] for pt in marker]) + sub[0][1]
+            ),
+            (
+                max([pt[0] for pt in marker]) + w + sub[0][0],
+                max([pt[1] for pt in marker]) + h + sub[0][1]
+            )
+        )
 
         # Count the matches to calculate the level
         level = len(matches) if len(matches) < 5 else 5
