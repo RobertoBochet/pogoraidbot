@@ -73,6 +73,8 @@ def load_raids_list(raids_file: str) -> bool:
 
 
 class ScreenshotRaid:
+    debug = False
+
     def __init__(self, img: Union[np.ndarray, bytearray]):
 
         if isinstance(img, np.ndarray):
@@ -82,7 +84,8 @@ class ScreenshotRaid:
         else:
             raise Exception  # TODO: create adhoc exception
 
-        self._image_sections = {}
+        if ScreenshotRaid.debug:
+            self._image_sections = {}
 
         self._size = (len(self._img[0]), len(self._img))
 
@@ -138,13 +141,14 @@ class ScreenshotRaid:
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         __, img = cv2.threshold(img, 210, 255, cv2.THRESH_BINARY_INV)
 
-        self._image_sections["hatching_timer"] = img  # TODO: remove debug
+        if ScreenshotRaid.debug:
+            self._image_sections["hatching_timer"] = img
 
         text = pytesseract.image_to_string(img, config=('--oem 1 --psm 3'))
 
         logger.debug("raw hatching_timer «{}»".format(text))
 
-        result = re.search(r"([0-3])[:\.]([0-5][0-9])[:\.]([0-5][0-9])", text)
+        result = re.search(r"([0-3])[:.]([0-5][0-9])[:.]([0-5][0-9])", text)
 
         try:
             logger.debug("hatching_timer {}:{}:{}".format(result.group(1), result.group(2), result.group(3)))
@@ -168,7 +172,8 @@ class ScreenshotRaid:
 
         mask = cv2.inRange(img, red_lower, red_upper)
 
-        self._image_sections["hatching_timer_mask"] = mask  # TODO: remove debug
+        if ScreenshotRaid.debug:
+            self._image_sections["hatching_timer_mask"] = mask
 
         try:
             contours, _ = cv2.findContours(mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
@@ -180,7 +185,7 @@ class ScreenshotRaid:
         except:
             pass
 
-        logger.debug("hatching timer notfound")
+        logger.debug("hatching timer not found")
         raise HatchingTimerNotFound
 
     def _read_raid_timer(self) -> datetime.timedelta:
@@ -190,7 +195,8 @@ class ScreenshotRaid:
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         __, img = cv2.threshold(img, 210, 255, cv2.THRESH_BINARY_INV)
 
-        self._image_sections["raid_timer"] = img  # TODO: remove debug
+        if ScreenshotRaid.debug:
+            self._image_sections["raid_timer"] = img
 
         text = pytesseract.image_to_string(img, config=('--oem 1 --psm 3'))
 
@@ -220,7 +226,8 @@ class ScreenshotRaid:
 
         mask = cv2.inRange(img, red_lower, red_upper)
 
-        self._image_sections["raid_timer_mask"] = mask  # TODO: remove debug
+        if ScreenshotRaid.debug:
+            self._image_sections["raid_timer_mask"] = mask
 
         try:
             contours, _ = cv2.findContours(mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
@@ -256,7 +263,8 @@ class ScreenshotRaid:
 
         logging.debug(text)
 
-        self._image_sections["gym_name"] = img  # TODO: remove debug
+        if ScreenshotRaid.debug:
+            self._image_sections["gym_name"] = img
 
         return text
         # TODO: add the exception case
@@ -281,7 +289,8 @@ class ScreenshotRaid:
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         __, img = cv2.threshold(img, 240, 255, cv2.THRESH_BINARY_INV)
 
-        self._image_sections["boss"] = img  # TODO: remove debug
+        if ScreenshotRaid.debug:
+            self._image_sections["boss"] = img
 
         # Find the text in the subset
         text = pytesseract.image_to_string(img, config=('--oem 1 --psm 3'))
@@ -331,7 +340,8 @@ class ScreenshotRaid:
         mask = cv2.inRange(img, *color_range)
         mask = cv2.dilate(mask, np.ones((5, 5), np.uint8))
 
-        self._image_sections["ex_tag_mask"] = mask  # TODO: remove debug
+        if ScreenshotRaid.debug:
+            self._image_sections["ex_tag_mask"] = mask
 
         # Try to search contours of mask
         contours, _ = cv2.findContours(mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
@@ -357,7 +367,8 @@ class ScreenshotRaid:
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         __, img = cv2.threshold(img, 210, 255, cv2.THRESH_BINARY_INV)
 
-        self._image_sections["ex_tag"] = img  # TODO: remove debug
+        if ScreenshotRaid.debug:
+            self._image_sections["ex_tag"] = img
 
         # Read the sub image
         text = pytesseract.image_to_string(img, config=('--oem 1 --psm 3'))
@@ -466,7 +477,8 @@ class ScreenshotRaid:
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             img = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 11, 2)
 
-            self._image_sections["time"] = img  # TODO: remove debug
+            if ScreenshotRaid.debug:
+                self._image_sections["time"] = img
 
             text = pytesseract.image_to_string(img, config=('--oem 1 --psm 3'))
 
