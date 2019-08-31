@@ -1,75 +1,26 @@
 import datetime
-import json
 import logging
 import re
 from difflib import SequenceMatcher
 from functools import reduce
-from multiprocessing import Process
-from typing import Tuple, Union, Dict
-from urllib.parse import urlparse
+from typing import Tuple, Union
 
 import cv2
 import numpy as np
 import pytesseract
-import requests
-from schema import Schema, Or
 
+import boss
+import gym
 import resources
 from cachedmethod import CachedMethod
 from exceptions import HatchingTimerNotFound, HatchingTimerUnreadable, RaidTimerNotFound, RaidTimerUnreadable, \
     ExTagNotFound, ExTagUnreadable, LevelNotFound, TimeNotFound, HatchingTimerException, RaidTimerException, \
-    GymNameNotFound, ExTagException, PokemonRaidsListNotAvailable, BossNotFound
+    GymNotFound, ExTagException, BossNotFound, BossesListNotAvailable
 from raid import Raid
 
 Rect = Tuple[Tuple[int, int], Tuple[int, int]]
 
 logger = logging.getLogger(__name__)
-
-raids: Union[Dict[str, Union[int, None]], None] = None
-
-raids_schema = Schema({
-    str: Or(1, 2, 3, 4, 5)
-})
-
-
-def load_raids_list(raids_file: str) -> bool:
-    global raids
-    raids = None
-
-    logger.info("Try to load the list of available pokémon in raids")
-
-    try:
-        # Check if the resource is remote
-        if bool(urlparse(raids_file).scheme):
-            # Load the remote json
-            response = requests.get(raids_file)
-            data = response.json()
-
-        else:
-            # Open the pokémon raids file and load it as json
-            with open(raids_file, 'r') as f:
-                data = json.load(f)
-
-    except FileNotFoundError:
-        logger.warning("Failed to load the available raids list: file not found")
-        return False
-    except requests.exceptions.ConnectionError:
-        logger.warning("Failed to load the available raids list: an HTTP error occurred")
-        return False
-    except ValueError:
-        logger.warning("Failed to load the available raids list: failed to decode json")
-        return False
-
-    # Check if the list is valid
-    if raids_schema.is_valid(data) is False:
-        logger.warning("The raids file is in a wrong format")
-        return False
-
-    raids = data
-
-    logger.info("Pokémon raids list is loaded")
-
-    return True
 
 
 class ScreenshotRaid:
@@ -242,7 +193,7 @@ class ScreenshotRaid:
         logger.debug("raid timer not found")
         raise RaidTimerNotFound
 
-    def _find_gym_name(self) -> str:
+    def _find_gym(self) -> gym.Gym:
         # TODO: improve find gym method
         try:
             x, y, r = self._anchors["gym_image"]
@@ -266,13 +217,18 @@ class ScreenshotRaid:
         if ScreenshotRaid.debug:
             self._image_sections["gym_name"] = img
 
-        return text
+        g = gym.find_gym(text)
+
+        if g is not None:
+            return g
+
+        return gym.Gym(name=text)
         # TODO: add the exception case
 
-    def _find_boss(self) -> str:
-        # Check if a list of available pokémon in raids was provided
-        if raids is None:
-            raise PokemonRaidsListNotAvailable
+    def _find_boss(self) -> Union[boss.Boss, None]:
+        # Check if a list of available bosses was provided
+        if boss.bosses is None:
+            raise BossesListNotAvailable
 
         # Force the calc of the level if it isn't already calculated
         _ = self.level
@@ -282,7 +238,7 @@ class ScreenshotRaid:
             (_, _), (_, y) = self._anchors["level"]
             sub = self._calc_subset(0.8, (y + 85, y + 215))
         except:
-            sub = self._calc_subset((200, -160), (60, 150))
+            sub = self._calc_subset(0.8, (0.23, 0.34))
 
         # Create the subset of the screenshot and filter it
         img = self._subset(sub)
@@ -301,26 +257,14 @@ class ScreenshotRaid:
         text = text.rstrip().replace('\n', ' ')
         text = " ".join(text.split())
 
-        # Minimal value required to consider similar two gyms
-        minimal_value = 0.4
-
-        current_most_similar_value = 0
-        current_most_similar: Union[str, None] = None
-
-        # Compare the text with each pokemon in the list and find the most similar
-        for p in raids:
-            r = SequenceMatcher(None, text, p).ratio()
-            if r > current_most_similar_value and r > minimal_value:
-                current_most_similar_value = r
-                current_most_similar = p
-
-        logging.debug(current_most_similar)
+        # Try to find a boss from text
+        b = boss.find_boss(text)
 
         # Check if a valid boss was found
-        if current_most_similar is None:
+        if b is None:
             raise BossNotFound
 
-        return current_most_similar
+        return b
 
     def _find_ex_tag(self) -> Rect:
         # Prepare a range of colors to search the ex label in HSV color space
@@ -432,8 +376,9 @@ class ScreenshotRaid:
         # Remove all the points that that are too far between themselves
         marker = list(filter(lambda x: abs(x[1] - mean) < 20, matches))
 
+        w, h = template.shape[::-1]
+
         if ScreenshotRaid.debug:
-            w, h = template.shape[::-1]
             for pt in marker:
                 cv2.rectangle(img, (pt[0], pt[1]), (pt[0] + w, pt[1] + h), (0, 0, 255), 2)
             self._image_sections["level"] = img
@@ -587,18 +532,18 @@ class ScreenshotRaid:
 
     @property
     @CachedMethod
-    def gym_name(self) -> Union[str, None]:
+    def gym(self) -> Union[gym.Gym, None]:
         try:
-            return self._find_gym_name()
-        except GymNameNotFound:
+            return self._find_gym()
+        except GymNotFound:
             return None
 
     @property
     @CachedMethod
-    def boss(self) -> Union[str, None]:
+    def boss(self) -> Union[boss.Boss, None]:
         try:
             return self._find_boss()
-        except (PokemonRaidsListNotAvailable, BossNotFound):
+        except (BossesListNotAvailable, BossNotFound):
             return None
 
     @property
@@ -688,7 +633,7 @@ class ScreenshotRaid:
 
     def to_raid(self) -> Raid:
         if self.is_hatched:
-            return Raid(gym_name=self.gym_name,
+            return Raid(gym=self.gym,
                         level=self.level,
                         end=self.end,
                         boss=self.boss,
@@ -696,25 +641,13 @@ class ScreenshotRaid:
                         is_ex=self.is_ex,
                         is_aprx_time=(True if self.time is None else False))
         else:
-            return Raid(gym_name=self.gym_name,
+            return Raid(gym=self.gym,
                         level=self.level,
                         hatching=self.hatching,
                         end=self.end,
                         is_hatched=False,
                         is_ex=self.is_ex,
                         is_aprx_time=(True if self.time is None else False))
-
-    def compute(self) -> None:
-        processes = [
-            Process(target=self._find_hours),
-            Process(target=self._find_hatching_timer)
-        ]
-
-        for p in processes:
-            p.start()
-
-        for p in processes:
-            p.join()
 
     def _get_anchors_image(self) -> np.ndarray:
         img = self._img.copy()

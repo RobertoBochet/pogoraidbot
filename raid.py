@@ -5,13 +5,13 @@ import random
 import string
 from dataclasses import dataclass, field
 from functools import reduce
-from typing import Dict, Union
+from typing import Dict
 
 from jinja2 import Template
 from telegram import User
 
-import gym
-from cachedmethod import CachedMethod
+from boss import Boss
+from gym import Gym
 
 
 @dataclass
@@ -26,14 +26,14 @@ class Participant:
 class Raid:
     code: str = field(
         default_factory=lambda: "".join(random.choice(string.ascii_letters + string.digits) for i in range(8)))
-    gym_name: str = None
+    gym: Gym = None
     is_ex: bool = False
     level: int = None
     is_hatched: bool = False
     end: datetime.time = None
     hatching: datetime.time = None
     hangout: datetime.time = None
-    boss: str = None
+    boss: Boss = None
     is_aprx_time: bool = False
     participants: Dict[int, Participant] = field(default_factory=lambda: {})
 
@@ -66,17 +66,12 @@ class Raid:
     def participants_count(self) -> int:
         return reduce((lambda x, y: x + y), [p.number for _, p in self.participants.items()], 0)
 
-    @property
-    @CachedMethod
-    def gym(self) -> Union[gym.Gym, None]:
-        return gym.find_gym(self.gym_name)
-
     def to_msg(self) -> str:
         TEMPLATE = Template(
             "{% if raid.is_ex %}"
             "*EX* "
             "{% endif %}"
-            "{% if raid.gym is not none %}"
+            "{% if raid.gym.latitude is not none and raid.gym.longitude is not none %}"
             "[{{ raid.gym.name|wordwrap(25) }}](http://maps.google.com/maps?"
             "q={{ raid.gym.latitude }},{{ raid.gym.longitude }}"
             "&ll={{ raid.gym.latitude }},{{ raid.gym.longitude }}"

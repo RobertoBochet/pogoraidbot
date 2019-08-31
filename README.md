@@ -46,7 +46,8 @@ $ python ./main.py -h
 
 ```bash
 usage: main.py [-h] [-t TOKEN] [-r HOST] [-p PORT] [-a SUPERADMIN]
-               [-g GYMS_FILE] [-d DEBUG_FOLDER] [-v] [--verbose] [--debug]
+               [-b BOSSES_FILE] [-g GYMS_FILE] [-d DEBUG_FOLDER] [-v] [--info]
+               [--debug]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -55,15 +56,18 @@ optional arguments:
   -r HOST, --host HOST  redis host
   -p PORT, --port PORT  redis port
   -a SUPERADMIN, --superadmin SUPERADMIN
-                        superadmin\'s id
+                        superadmin's id
+  -b BOSSES_FILE, --bosses-file BOSSES_FILE
+                        JSON file contains possible pokémons in the raids. It
+                        can be also provided over http(s)
   -g GYMS_FILE, --gyms-file GYMS_FILE
                         JSON file contains gyms and their coordinates. It can
-                        be also provided with http(s)
+                        be also provided over http(s)
   -d DEBUG_FOLDER, --debug-folder DEBUG_FOLDER
                         debug folder
   -v                    number of -v specifics level of verbosity
-  --verbose             equal to -vvv
-  --debug               equal to -vvvv
+  --info                equal to -vv
+  --debug               equal to -vvv
 ```
 
 An example:

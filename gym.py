@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Gym:
     name: str
-    latitude: float
-    longitude: float
+    latitude: float = None
+    longitude: float = None
 
 
 def find_gym(gym_name: str) -> Union[Gym, None]:

@@ -14,8 +14,8 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode, Upda
 from telegram.ext import Updater, MessageHandler, CallbackQueryHandler, CommandHandler
 from telegram.ext.filters import Filters
 
+import boss
 import gym
-import screenshot
 from raid import Raid
 from screenshot import ScreenshotRaid
 
@@ -91,7 +91,7 @@ class PoGORaidBot:
                 return self.func(inst, bot, update)
 
     def __init__(self, token: str, host: str = "127.0.0.1", port: int = 6379, superadmin: int = None,
-                 raids_file:str = None,gyms_file: str = None, debug_folder: str = None):
+                 bosses_file: str = None, gyms_file: str = None, debug_folder: str = None):
         self.logger = logging.getLogger(__name__)
 
         # Init and test redis connection
@@ -107,9 +107,9 @@ class PoGORaidBot:
         if self._superadmin is not None:
             self._db_admins.set(self._superadmin, "superadmin")
 
-        # Load raids list
-        if raids_file is not None:
-            screenshot.load_raids_list(raids_file)
+        # Load bosses list
+        if bosses_file is not None:
+            boss.load_bosses_list(bosses_file)
 
         # Load gyms list
         if gyms_file is not None:

@@ -54,7 +54,7 @@ class ExTagUnreadable(ExTagException, ValueUnreadable):
     pass
 
 
-class GymNameNotFound(ValueNotFound):
+class GymNotFound(ValueNotFound):
     pass
 
 
@@ -62,7 +62,7 @@ class LevelNotFound(ValueNotFound):
     pass
 
 
-class PokemonRaidsListNotAvailable(Exception):
+class BossesListNotAvailable(Exception):
     pass
 
 

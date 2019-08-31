@@ -16,10 +16,10 @@ if __name__ == "__main__":
     parser.add_argument("-r", "--host", dest="host", help="redis host")
     parser.add_argument("-p", "--port", dest="port", help="redis port")
     parser.add_argument("-a", "--superadmin", dest="superadmin", help="superadmin's id")
-    parser.add_argument("-b", "--raids-file", dest="raids_file",
-                        help="JSON file contains possible pokémons in the raids. It can be also provided with http(s)")
+    parser.add_argument("-b", "--bosses-file", dest="bosses_file",
+                        help="JSON file contains possible pokémons in the raids. It can be also provided over http(s)")
     parser.add_argument("-g", "--gyms-file", dest="gyms_file",
-                        help="JSON file contains gyms and their coordinates. It can be also provided with http(s)")
+                        help="JSON file contains gyms and their coordinates. It can be also provided over http(s)")
     parser.add_argument("-d", "--debug-folder", dest="debug_folder", help="debug folder")
     parser.add_argument("-v", dest="verbosity_level", action="count", default=0,
                         help="number of -v specifics level of verbosity")
