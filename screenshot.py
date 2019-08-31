@@ -623,7 +623,9 @@ class ScreenshotRaid:
     @CachedMethod
     def time(self) -> Union[datetime.time, None]:
         try:
-            return self._find_time()
+            return None
+            # The calc of the time from the notification bar is momentary disabled
+            # return self._find_time()
         except TimeNotFound:
             return None
 
