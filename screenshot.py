@@ -432,11 +432,18 @@ class ScreenshotRaid:
         # Remove all the points that that are too far between themselves
         marker = list(filter(lambda x: abs(x[1] - mean) < 20, matches))
 
-        # DEBUG
-        w, h = template.shape[::-1]
-        for pt in marker:
-            cv2.rectangle(img, (pt[0], pt[1]), (pt[0] + w, pt[1] + h), (0, 0, 255), 2)
-        self._image_sections["level"] = img
+        if ScreenshotRaid.debug:
+            w, h = template.shape[::-1]
+            for pt in marker:
+                cv2.rectangle(img, (pt[0], pt[1]), (pt[0] + w, pt[1] + h), (0, 0, 255), 2)
+            self._image_sections["level"] = img
+
+        # Count the matches to calculate the level
+        level = len(matches) if len(matches) < 5 else 5
+
+        # No matches raises a exception
+        if level == 0:
+            raise LevelNotFound
 
         # Save the anchor
         self._anchors["level"] = (
@@ -449,13 +456,6 @@ class ScreenshotRaid:
                 max([pt[1] for pt in marker]) + h + sub[0][1]
             )
         )
-
-        # Count the matches to calculate the level
-        level = len(matches) if len(matches) < 5 else 5
-
-        # No matches raises a exception
-        if level == 0:
-            raise LevelNotFound
 
         return level
 
