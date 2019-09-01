@@ -10,8 +10,8 @@ from typing import Callable
 
 import cv2
 import redis
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode, Update, TelegramError, Bot, Message, error
-from telegram.ext import Updater, MessageHandler, CallbackQueryHandler, CommandHandler
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode, Update, Bot, Message, error
+from telegram.ext import Updater, MessageHandler, CallbackQueryHandler, CommandHandler, CallbackContext
 from telegram.ext.filters import Filters
 
 import boss
@@ -23,14 +23,14 @@ from screenshot import ScreenshotRaid
 class PoGORaidBot:
     class Decorator:
         class ChatMustBeEnabled:
-            def __init__(self, func: Callable[[PoGORaidBot, Bot, Update], bool]):
+            def __init__(self, func: Callable[[PoGORaidBot, Update, CallbackContext], bool]):
                 self.func = func
 
             def __get__(self, obj, objtype):
                 """Support instance methods."""
                 return functools.partial(self.__call__, obj)
 
-            def __call__(self, inst: PoGORaidBot, bot: Bot, update: Update) -> bool:
+            def __call__(self, inst: PoGORaidBot, update: Update, context: CallbackContext) -> bool:
                 try:
                     chat = update.message.chat
                 except AttributeError:
@@ -42,24 +42,24 @@ class PoGORaidBot:
 
                     return False
 
-                return self.func(inst, bot, update)
+                return self.func(inst, update, context)
 
         class UserMustBeAdmin:
-            def __init__(self, func: Callable[[PoGORaidBot, Bot, Update], bool]):
+            def __init__(self, func: Callable[[PoGORaidBot, Update, CallbackContext], bool]):
                 self.func = func
 
             def __get__(self, obj, objtype):
                 """Support instance methods."""
                 return functools.partial(self.__call__, obj)
 
-            def __call__(self, inst: PoGORaidBot, bot: Bot, update: Update) -> bool:
+            def __call__(self, inst: PoGORaidBot, update: Update, context: CallbackContext) -> bool:
                 is_admin = False
                 # If the chat is private doesn't check administrators
                 if update.message.chat.type == update.message.chat.PRIVATE:
                     is_admin = True
                 else:
                     # Get the list of administrators of a chat
-                    for a in bot.get_chat_administrators(update.message.chat.id):
+                    for a in context.bot.get_chat_administrators(update.message.chat.id):
                         # Check if the current admin in the user
                         if a.user.id == update.message.from_user.id:
                             is_admin = True
@@ -71,24 +71,24 @@ class PoGORaidBot:
 
                     return False
 
-                return self.func(inst, bot, update)
+                return self.func(inst, update, context)
 
         class UserMustBeBotAdmin:
-            def __init__(self, func: Callable[[PoGORaidBot, Bot, Update], bool]):
+            def __init__(self, func: Callable[[PoGORaidBot, Update, CallbackContext], bool]):
                 self.func = func
 
             def __get__(self, obj, objtype):
                 """Support instance methods."""
                 return functools.partial(self.__call__, obj)
 
-            def __call__(self, inst: PoGORaidBot, bot: Bot, update: Update) -> bool:
+            def __call__(self, inst: PoGORaidBot, update: Update, context: CallbackContext) -> bool:
                 # Check if the user is a bot admin
                 if not inst._db_admins.exists(update.message.from_user.id):
                     inst.logger.warning("User {} is not a bot admin".format(update.message.from_user.id))
 
                     return False
 
-                return self.func(inst, bot, update)
+                return self.func(inst, update, context)
 
     def __init__(self, token: str, host: str = "127.0.0.1", port: int = 6379, superadmin: int = None,
                  bosses_file: str = None, gyms_file: str = None, debug_folder: str = None):
@@ -122,7 +122,7 @@ class PoGORaidBot:
         self._bot = Bot(token)
 
         # Init updater
-        self._updater = Updater(bot=self._bot)
+        self._updater = Updater(bot=self._bot, use_context=True)
 
         # Get the id of the bot
         self._id = self._bot.get_me().id
@@ -168,22 +168,22 @@ class PoGORaidBot:
         # Wait
         self._updater.idle()
 
-    def _handler_error(self, bot: Bot, update: Update, error: TelegramError) -> None:
-        self.logger.warning('Update "{}" caused error "{}"'.format(update, error))
+    def _handler_error(self, update: Update, context: CallbackContext) -> None:
+        self.logger.warning('Update "{}" caused error "{}"'.format(update, context.error))
 
     @Decorator.ChatMustBeEnabled
-    def _handler_event_pinned(self, bot: Bot, update: Update) -> bool:
+    def _handler_event_pinned(self, update: Update, context: CallbackContext) -> bool:
         # Check if the pin is caused by the bot
         if update.message.from_user.id != self._id:
             return False
 
         # Remove the notify message
-        bot.delete_message(update.message.chat.id, update.message.message_id)
+        self._bot.delete_message(update.message.chat.id, update.message.message_id)
 
         return True
 
     @Decorator.ChatMustBeEnabled
-    def _handler_screenshot(self, bot: Bot, update: Update) -> bool:
+    def _handler_screenshot(self, update: Update, context: CallbackContext) -> bool:
         self.logger.info("New image is arrived from {} by {}"
                          .format(update.effective_chat.title, update.effective_user.username))
 
@@ -197,7 +197,7 @@ class PoGORaidBot:
         return True
 
     @Decorator.ChatMustBeEnabled
-    def _handler_set_hangout(self, bot: Bot, update: Update) -> bool:
+    def _handler_set_hangout(self, update: Update, context: CallbackContext) -> bool:
         # Check if the reply is for the bot
         if update.message.reply_to_message.from_user.id != self._id:
             return False
@@ -229,7 +229,7 @@ class PoGORaidBot:
         return True
 
     @Decorator.ChatMustBeEnabled
-    def _handler_buttons(self, bot: Bot, update: Update) -> bool:
+    def _handler_buttons(self, update: Update, context: CallbackContext) -> bool:
         try:
             # Validate the data
             result = re.match(r"([a-zA-Z0-9]{8}):([afr])", update.callback_query.data)
@@ -263,7 +263,7 @@ class PoGORaidBot:
 
     @Decorator.ChatMustBeEnabled
     @Decorator.UserMustBeAdmin
-    def _handler_command_disablescan(self, bot: Bot, update: Update) -> bool:
+    def _handler_command_disablescan(self, update: Update, context: CallbackContext) -> bool:
         # Add current chat to the db of disabled scan
         self._db_disabledscan.set(update.message.chat.id, "")
 
@@ -274,7 +274,7 @@ class PoGORaidBot:
 
     @Decorator.ChatMustBeEnabled
     @Decorator.UserMustBeAdmin
-    def _handler_command_enablescan(self, bot: Bot, update: Update) -> bool:
+    def _handler_command_enablescan(self, update: Update, context: CallbackContext) -> bool:
         # Remove current chat from the db of disabled scan
         self._db_disabledscan.delete(update.message.chat.id)
 
@@ -284,7 +284,7 @@ class PoGORaidBot:
         return True
 
     @Decorator.ChatMustBeEnabled
-    def _handler_command_scan(self, bot: Bot, update: Update) -> bool:
+    def _handler_command_scan(self, update: Update, context: CallbackContext) -> bool:
         self.logger.info("Required scan from {} by {}".format(update.message.chat.id, update.message.from_user.id))
 
         # Check if it is a reply to screenshot
@@ -299,7 +299,7 @@ class PoGORaidBot:
         return True
 
     @Decorator.UserMustBeBotAdmin
-    def _handler_command_addadmin(self, bot: Bot, update: Update) -> bool:
+    def _handler_command_addadmin(self, update: Update, context: CallbackContext) -> bool:
         self.logger.info("User {} try to add {} as bot admin".format(update.message.from_user.id,
                                                                      update.message.reply_to_message.from_user.id))
 
@@ -322,7 +322,7 @@ class PoGORaidBot:
         return True
 
     @Decorator.UserMustBeBotAdmin
-    def _handler_command_removeadmin(self, bot: Bot, update: Update) -> bool:
+    def _handler_command_removeadmin(self, update: Update, context: CallbackContext) -> bool:
         self.logger.info("User {} try to remove {} as bot admin".format(update.message.from_user.id,
                                                                         update.message.reply_to_message.from_user.id))
 
@@ -352,7 +352,7 @@ class PoGORaidBot:
         return True
 
     @Decorator.UserMustBeBotAdmin
-    def _handler_command_enablechat(self, bot: Bot, update: Update) -> bool:
+    def _handler_command_enablechat(self, update: Update, context: CallbackContext) -> bool:
         self.logger.info("Bot admin {} try to enable the chat {}".format(update.message.from_user.id,
                                                                          update.message.chat.id))
 
@@ -370,7 +370,7 @@ class PoGORaidBot:
         return True
 
     @Decorator.UserMustBeBotAdmin
-    def _handler_command_disablechat(self, bot: Bot, update: Update) -> bool:
+    def _handler_command_disablechat(self, update: Update, context: CallbackContext) -> bool:
         self.logger.info("Bot admin {} try to disable the chat {}".format(update.message.from_user.id,
                                                                           update.message.chat.id))
 
