@@ -78,7 +78,7 @@ $ python3 ./main.py -t [BOT_TOKEN] -r 127.0.0.1 -p 6379
 
 ## Dockerized version \[recommended]
 
-If you don't want to manage the this bot as a standalone application you can use the dockerized version.
+If you don't want to manage this bot as a standalone application you can use the dockerized version.
 
 You can find it in this [repo](https://github.com/RobertoBochet/pogoraidbot-dockerized).
 
