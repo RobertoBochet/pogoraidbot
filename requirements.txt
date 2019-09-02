@@ -1,7 +1,7 @@
-python-telegram-bot
-opencv-python
-pytesseract
-redis
-jinja2
-requests
-schema
+python-telegram-bot == 12.*
+opencv-python == 4.1.*
+pytesseract == 0.3.*
+redis == 3.3.*
+jinja2 == 2.10.*
+requests == 2.22.*
+schema == 0.7.*
