@@ -8,7 +8,7 @@ from typing import Union, List
 from urllib.parse import urlparse
 
 import requests
-from schema import Schema, Or
+from schema import Schema, Or, Optional
 
 bosses: Union[List[Boss], None] = None
 
@@ -72,12 +72,28 @@ def load_bosses_list(file: str) -> bool:
         logger.warning("Failed to load the bosses list: failed to decode json")
         return False
 
-    schema = Schema({
+    # Simple list of boss' names
+    schema1 = Schema([str])
+
+    # Dictionary of boss' names and level
+    schema2 = Schema({
         str: Or(1, 2, 3, 4, 5)
     })
 
+    # List of Boss objects
+    schema3 = Schema([{
+        "name": str,
+        Optional("level"): int,
+        Optional("is_there_shiny"): bool
+    }])
+
     # Check if the list is valid
-    if schema.is_valid(data) is True:
+    if schema1.is_valid(data):
+        bosses = []
+        for b in data:
+            bosses.append(Boss(b))
+
+    elif schema2.is_valid(data):
         bosses = []
         for b in data:
             bosses.append(Boss(
@@ -85,10 +101,16 @@ def load_bosses_list(file: str) -> bool:
                 level=data[b]
             ))
 
+    elif schema3.is_valid(data):
+        bosses = []
+        for b in data:
+            bosses.append(Boss(**b))
+
     if bosses is None:
         logger.warning("The file is in a wrong format")
         return False
 
-    logger.info("Bosses list is loaded with {} bosses".format(len(bosses)))
+    logger.debug(bosses)
 
+    logger.info("Bosses list is loaded with {} bosses".format(len(bosses)))
     return True
