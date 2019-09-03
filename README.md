@@ -78,7 +78,7 @@ $ python3 ./main.py -t [BOT_TOKEN] -r 127.0.0.1 -p 6379
 
 ## Dockerized version \[recommended]
 
-If you don't want to manage https://www.google.com/search?q=raids+pokemon+go&client=firefox-b-d&channel=crow&source=lnms&tbm=isch&sa=X&ved=0ahUKEwiMqtfe4rLkAhVJsKQKHUbGCLMQ_AUIEigC&biw=1280&bih=925#imgrc=cVnphVvioDdiCM:this bot as a standalone application you can use the dockerized version.
+If you don't want to manage this bot as a standalone application you can use the dockerized version.
 
 You can find it in this [repo](https://github.com/RobertoBochet/pogoraidbot-dockerized).
 
