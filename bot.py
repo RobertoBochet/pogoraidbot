@@ -6,6 +6,7 @@ import logging
 import os
 import pickle
 import re
+import traceback
 from typing import Callable
 
 import cv2
@@ -232,7 +233,7 @@ class PoGORaidBot:
     def _handler_buttons(self, update: Update, context: CallbackContext) -> bool:
         try:
             # Validate the data
-            result = re.match(r"([a-zA-Z0-9]{8}):([afr])", update.callback_query.data)
+            result = re.match(r"([a-zA-Z0-9]{8}):([arf])", update.callback_query.data)
             # Try to retrieve the raid information
             raid = pickle.loads(self._db_raids.get(result.group(1)))
             # Get operation
@@ -246,10 +247,12 @@ class PoGORaidBot:
         # Edit list of participants
         if op == "a":
             raid.add_participant(update.callback_query.from_user)
-        elif op == "f":
-            raid.add_flyer(update.callback_query.from_user)
-        else:
+        elif op == "r":
             raid.remove_participant(update.callback_query.from_user)
+        elif op == "f":
+            raid.toggle_flyer(update.callback_query.from_user)
+        else:
+            return False
 
         self.logger.debug(raid)
 
@@ -293,8 +296,12 @@ class PoGORaidBot:
             self.logger.info("Invalid scan command")
             return False
 
-        # Scan the screenshot
-        self._scan_screenshot(update.message.reply_to_message)
+        try:
+            # Scan the screenshot
+            self._scan_screenshot(update.message.reply_to_message)
+        except:
+            traceback.print_exc()
+            return False
 
         return True
 
@@ -447,9 +454,9 @@ class PoGORaidBot:
                                             disable_web_page_preview=True,
                                             parse_mode=ParseMode.MARKDOWN,
                                             reply_markup=InlineKeyboardMarkup([[
-                                                InlineKeyboardButton("\U0001F42F", callback_data=raid.code + ":a"),
-                                                InlineKeyboardButton("\U0001F985", callback_data=raid.code + ":f"),
-                                                InlineKeyboardButton("\U0001F999", callback_data=raid.code + ":r")
+                                                InlineKeyboardButton("\U00002795", callback_data=raid.code + ":a"),
+                                                InlineKeyboardButton("\U00002796", callback_data=raid.code + ":r"),
+                                                InlineKeyboardButton("\U00002708", callback_data=raid.code + ":f")
                                             ]]))
 
         # Re-pin the new message

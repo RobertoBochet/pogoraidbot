@@ -41,17 +41,8 @@ class Raid:
         if user.id in self.participants:
             self.participants[user.id].username = user.username
             self.participants[user.id].number += 1
-            self.participants[user.id].is_flyer = False
         else:
             self.participants[user.id] = Participant(user.id, user.username)
-
-    def add_flyer(self, user: User) -> None:
-        if user.id in self.participants:
-            self.participants[user.id].username = user.username
-            self.participants[user.id].number += 1
-            self.participants[user.id].is_flyer = True
-        else:
-            self.participants[user.id] = Participant(user.id, user.username, is_flyer=True)
 
     def remove_participant(self, user: User) -> bool:
         if user.id in self.participants:
@@ -59,6 +50,12 @@ class Raid:
                 self.participants[user.id].number -= 1
             else:
                 del self.participants[user.id]
+            return True
+        return False
+
+    def toggle_flyer(self, user: User) -> bool:
+        if user.id in self.participants:
+            self.participants[user.id].is_flyer = not self.participants[user.id].is_flyer
             return True
         return False
 
@@ -70,46 +67,46 @@ class Raid:
         TEMPLATE = Template(
             "{% if raid.is_ex %}*EX*{% endif %}"
             "{% if raid.gym.latitude is not none and raid.gym.longitude is not none %}"
-                "[{{ raid.gym.name|wordwrap(25) }}](http://maps.google.com/maps?"
-                "q={{ raid.gym.latitude }},{{ raid.gym.longitude }}"
-                "&ll={{ raid.gym.latitude }},{{ raid.gym.longitude }}"
-                "&z=17)\n"
+            "[{{ raid.gym.name|wordwrap(25) }}](http://maps.google.com/maps?"
+            "q={{ raid.gym.latitude }},{{ raid.gym.longitude }}"
+            "&ll={{ raid.gym.latitude }},{{ raid.gym.longitude }}"
+            "&z=17)\n"
             "{% else %}"
-                "{{ raid.gym_name|wordwrap(25) }}\n"
+            "{{ raid.gym_name|wordwrap(25) }}\n"
             "{% endif %}"
             "\n"
-            "{% if raid.boss is not none %}"            
-                "{% if raid.boss.is_there_shiny %}"
-                    "\U00002728*{{ raid.boss.name }}*\U00002728\n"
-                "{% else %}"
-                    "*{{ raid.boss.name }}*\n"
-                "{% endif %}"
+            "{% if raid.boss is not none %}"
+            "{% if raid.boss.is_there_shiny %}"
+            "\U00002728*{{ raid.boss.name }}*\U00002728\n"
+            "{% else %}"
+            "*{{ raid.boss.name }}*\n"
+            "{% endif %}"
             "{% endif %}"
             "{% if raid.boss is not none and raid.boss.level is not none  %}"
-                "{% for i in range(0, raid.boss.level) %}\U00002B50{% endfor %}\n"
+            "{% for i in range(0, raid.boss.level) %}\U00002B50{% endfor %}\n"
             "{% else %}"
-                "{% for i in range(0, raid.level) %}\U00002B50{% endfor %}\n"
+            "{% for i in range(0, raid.level) %}\U00002B50{% endfor %}\n"
             "{% endif %}"
             "\n"
             "{% if raid.hatching is not none %}"
-                "`Hatching:   {% if raid.is_aprx_time %}~{% endif %}{{ raid.hatching.strftime('%H:%M') }}`\n"
+            "`Hatching:   {% if raid.is_aprx_time %}~{% endif %}{{ raid.hatching.strftime('%H:%M') }}`\n"
             "{% endif %}"
             "{% if raid.end is not none %}"
-                "`End:        {% if raid.is_aprx_time %}~{% endif %}{{ raid.end.strftime('%H:%M') }}`\n"
+            "`End:        {% if raid.is_aprx_time %}~{% endif %}{{ raid.end.strftime('%H:%M') }}`\n"
             "{% endif %}"
             "{% if raid.hangout is not none %}"
-                "`Hangout:    {% if raid.is_aprx_time %} {% endif %}{{ raid.hangout.strftime('%H:%M') }}`\n"
+            "`Hangout:    {% if raid.is_aprx_time %} {% endif %}{{ raid.hangout.strftime('%H:%M') }}`\n"
             "{% endif %}"
             "{% if raid.participants|count > 0 %}"
-                "`─────────────────────`\n"
-                "{% for id, p in raid.participants.items() %}"
-                    "[{{ p.username }}](tg://user?id={{ id }})"
-                    "{% if p.is_flyer %}\U0001F6E9{% endif %}"
-                    "{% if p.number > 1 %} +{{ p.number - 1 }} {% endif %}"
-                    "\n"
-                "{% endfor %}"
-                "`─────────────────────`\n"
-                "*{{ raid.participants_count }}* participants\n"
+            "`─────────────────────`\n"
+            "{% for id, p in raid.participants.items() %}"
+            "[{{ p.username }}](tg://user?id={{ id }})"
+            "{% if p.is_flyer %}\U00002708{% endif %}"
+            "{% if p.number > 1 %} +{{ p.number - 1 }} {% endif %}"
+            "\n"
+            "{% endfor %}"
+            "`─────────────────────`\n"
+            "*{{ raid.participants_count }}* participants\n"
             "{% endif %}"
             "`[{{ raid.code }}]`"
         )
