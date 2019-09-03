@@ -14,9 +14,6 @@ bosses: Union[List[Boss], None] = None
 
 logger = logging.getLogger(__name__)
 
-# Minimal value required to consider similar two bosses
-minimal_value = 0.4
-
 
 @dataclass
 class Boss:
@@ -25,7 +22,7 @@ class Boss:
     is_there_shiny: bool = False
 
 
-def find_boss(boss_name: str) -> Union[Boss, None]:
+def find_boss(boss_name: str, minimal_value: float = 0.4) -> Union[Boss, None]:
     # check if there is a list of bosses
     if bosses is None:
         return None
@@ -35,7 +32,7 @@ def find_boss(boss_name: str) -> Union[Boss, None]:
 
     # Compare the boss_name with each boss in the list and find the most similar
     for b in bosses:
-        r = SequenceMatcher(None, b.name, boss_name).ratio()
+        r = SequenceMatcher(None, b.name.lower(), boss_name.lower()).ratio()
         logger.debug("{} - {}".format(r, b.name))
         if r > current_most_similar_value and r > minimal_value:
             current_most_similar_value = r

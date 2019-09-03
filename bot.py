@@ -139,6 +139,9 @@ class PoGORaidBot:
         # Set the handler for the pinned message notify
         self._updater.dispatcher.add_handler(MessageHandler(Filters.status_update.pinned_message,
                                                             self._handler_event_pinned))
+        # Set the handler to set the boss
+        self._updater.dispatcher.add_handler(MessageHandler(
+            Filters.reply & Filters.regex(r"^\s*[a-zA-Z]+\s*$"), self._handler_set_boss))
 
         # Set the handler for scan command
         self._updater.dispatcher.add_handler(CommandHandler("scan", self._handler_command_scan))
@@ -261,6 +264,54 @@ class PoGORaidBot:
 
         # Updates the message
         self._repost(raid, update.callback_query.message)
+
+        return True
+
+    @Decorator.ChatMustBeEnabled
+    def _handler_set_boss(self, update: Update, context: CallbackContext) -> bool:
+        # Check if the reply is for the bot
+        if update.message.reply_to_message.from_user.id != self._id:
+            return False
+
+        try:
+            # Search the code in the bot message
+            code = re.search(r"\[([a-zA-Z0-9]{8})\]", update.message.reply_to_message.text).group(1)
+            # Try to retrieve the raid information
+            raid = pickle.loads(self._db_raids.get(code))
+        except Exception:  # TODO: improve except
+            self.logger.warning("A invalid to bot message reply was come")
+            return False
+
+        self.logger.info("A request to change boss was come from {}({}) by {}({})"
+                         .format(update.effective_chat.title, update.effective_chat.id,
+                                 update.effective_user.username, update.effective_user.id))
+
+        self.logger.info("The user suggested \"{}\"".format(update.message.text.strip()))
+
+        # Get the suggested boss name
+        name = update.message.text.strip()
+
+        # Search the boss
+        b = boss.find_boss(name, 0.8)
+
+        # If the boss wasn't found reply with an error
+        if b is None:
+            update.message.reply_markdown("Sorry, but i don't know *{}*".format(name))
+            self.logger.info("A valid boss wasn't found")
+            return False
+
+        self.logger.info("\"{}\" was found".format(b.name))
+
+        # Set the new boss
+        raid.boss = b
+
+        # Save the raid in the db
+        self._db_raids.setex(raid.code, 60 * 60 * 6, pickle.dumps(raid))
+
+        self.logger.debug(raid)
+
+        # Updates the message
+        self._repost(raid, update.message)
 
         return True
 
