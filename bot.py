@@ -176,7 +176,7 @@ class PoGORaidBot:
         self.logger.warning('Update "{}" caused error "{}"'.format(update, context.error))
 
     @Decorator.ChatMustBeEnabled
-    def _handler_event_pinned(self, update: Update, context: CallbackContext) -> bool:
+    def _handler_event_pinned(self, update: Update, _: CallbackContext) -> bool:
         # Check if the pin is caused by the bot
         if update.message.from_user.id != self._id:
             return False
@@ -187,7 +187,7 @@ class PoGORaidBot:
         return True
 
     @Decorator.ChatMustBeEnabled
-    def _handler_screenshot(self, update: Update, context: CallbackContext) -> bool:
+    def _handler_screenshot(self, update: Update, _: CallbackContext) -> bool:
         self.logger.info("New image is arrived from {} by {}"
                          .format(update.effective_chat.title, update.effective_user.username))
 
@@ -201,7 +201,7 @@ class PoGORaidBot:
         return True
 
     @Decorator.ChatMustBeEnabled
-    def _handler_set_hangout(self, update: Update, context: CallbackContext) -> bool:
+    def _handler_set_hangout(self, update: Update, _: CallbackContext) -> bool:
         # Check if the reply is for the bot
         if update.message.reply_to_message.from_user.id != self._id:
             return False
@@ -227,13 +227,16 @@ class PoGORaidBot:
         # Save the raid in the db
         self._db_raids.setex(raid.code, 60 * 60 * 6, pickle.dumps(raid))
 
+        # Try to delete user message
+        self._try_to_delete(update.message)
+
         # Updates the message
-        self._repost(raid, update.message)
+        self._post_raid(raid, update.message.reply_to_message)
 
         return True
 
     @Decorator.ChatMustBeEnabled
-    def _handler_buttons(self, update: Update, context: CallbackContext) -> bool:
+    def _handler_buttons(self, update: Update, _: CallbackContext) -> bool:
         try:
             # Validate the data
             result = re.match(r"([a-zA-Z0-9]{8}):([arf])", update.callback_query.data)
@@ -263,12 +266,12 @@ class PoGORaidBot:
         self._db_raids.setex(raid.code, 60 * 60 * 6, pickle.dumps(raid))
 
         # Updates the message
-        self._repost(raid, update.callback_query.message)
+        self._post_raid(raid, update.callback_query.message)
 
         return True
 
     @Decorator.ChatMustBeEnabled
-    def _handler_set_boss(self, update: Update, context: CallbackContext) -> bool:
+    def _handler_set_boss(self, update: Update, _: CallbackContext) -> bool:
         # Check if the reply is for the bot
         if update.message.reply_to_message.from_user.id != self._id:
             return False
@@ -310,14 +313,17 @@ class PoGORaidBot:
 
         self.logger.debug(raid)
 
+        # Try to delete user message
+        self._try_to_delete(update.message)
+
         # Updates the message
-        self._repost(raid, update.message)
+        self._post_raid(raid, update.message.reply_to_message)
 
         return True
 
     @Decorator.ChatMustBeEnabled
     @Decorator.UserMustBeAdmin
-    def _handler_command_disablescan(self, update: Update, context: CallbackContext) -> bool:
+    def _handler_command_disablescan(self, update: Update, _: CallbackContext) -> bool:
         # Add current chat to the db of disabled scan
         self._db_disabledscan.set(update.message.chat.id, "")
 
@@ -328,7 +334,7 @@ class PoGORaidBot:
 
     @Decorator.ChatMustBeEnabled
     @Decorator.UserMustBeAdmin
-    def _handler_command_enablescan(self, update: Update, context: CallbackContext) -> bool:
+    def _handler_command_enablescan(self, update: Update, _: CallbackContext) -> bool:
         # Remove current chat from the db of disabled scan
         self._db_disabledscan.delete(update.message.chat.id)
 
@@ -338,7 +344,7 @@ class PoGORaidBot:
         return True
 
     @Decorator.ChatMustBeEnabled
-    def _handler_command_scan(self, update: Update, context: CallbackContext) -> bool:
+    def _handler_command_scan(self, update: Update, _: CallbackContext) -> bool:
         self.logger.info("Required scan from {} by {}".format(update.message.chat.id, update.message.from_user.id))
 
         # Check if it is a reply to screenshot
@@ -346,6 +352,9 @@ class PoGORaidBot:
             update.message.reply_text("It must be a reply to a screenshot")
             self.logger.info("Invalid scan command")
             return False
+
+        # Try to delete user command
+        self._try_to_delete(update.message)
 
         try:
             # Scan the screenshot
@@ -357,7 +366,7 @@ class PoGORaidBot:
         return True
 
     @Decorator.UserMustBeBotAdmin
-    def _handler_command_addadmin(self, update: Update, context: CallbackContext) -> bool:
+    def _handler_command_addadmin(self, update: Update, _: CallbackContext) -> bool:
         self.logger.info("User {} try to add {} as bot admin".format(update.message.from_user.id,
                                                                      update.message.reply_to_message.from_user.id))
 
@@ -380,7 +389,7 @@ class PoGORaidBot:
         return True
 
     @Decorator.UserMustBeBotAdmin
-    def _handler_command_removeadmin(self, update: Update, context: CallbackContext) -> bool:
+    def _handler_command_removeadmin(self, update: Update, _: CallbackContext) -> bool:
         self.logger.info("User {} try to remove {} as bot admin".format(update.message.from_user.id,
                                                                         update.message.reply_to_message.from_user.id))
 
@@ -410,7 +419,7 @@ class PoGORaidBot:
         return True
 
     @Decorator.UserMustBeBotAdmin
-    def _handler_command_enablechat(self, update: Update, context: CallbackContext) -> bool:
+    def _handler_command_enablechat(self, update: Update, _: CallbackContext) -> bool:
         self.logger.info("Bot admin {} try to enable the chat {}".format(update.message.from_user.id,
                                                                          update.message.chat.id))
 
@@ -428,7 +437,7 @@ class PoGORaidBot:
         return True
 
     @Decorator.UserMustBeBotAdmin
-    def _handler_command_disablechat(self, update: Update, context: CallbackContext) -> bool:
+    def _handler_command_disablechat(self, update: Update, _: CallbackContext) -> bool:
         self.logger.info("Bot admin {} try to disable the chat {}".format(update.message.from_user.id,
                                                                           update.message.chat.id))
 
@@ -475,15 +484,28 @@ class PoGORaidBot:
         except Exception:
             self.logger.warning("Failed to save sections of image")
 
-        message.reply_markdown(raid.to_msg(), disable_web_page_preview=True, quote=True)
+        try:
+            self._post_raid(raid, message)
+        except:
+            traceback.print_exc()
 
-        self.logger.info("A reply was sent")
+    def _post_raid(self, raid: Raid, message: Message) -> None:
+        options = {
+            "disable_web_page_preview": True,
+            "parse_mode": ParseMode.MARKDOWN
+        }
 
-    def _repost(self, raid: Raid, message: Message) -> None:
-        user_message = None
-        if message.from_user.id != self._id:
-            user_message = message
-            message = message.reply_to_message
+        # If the hangout is defined add the reply button to the message
+        if raid.hangout is not None:
+            options["reply_markup"] = InlineKeyboardMarkup([[
+                InlineKeyboardButton("\U00002795", callback_data=raid.code + ":a"),
+                InlineKeyboardButton("\U00002796", callback_data=raid.code + ":r"),
+                InlineKeyboardButton("\U00002708", callback_data=raid.code + ":f")
+            ]])
+
+        # If the reference message is a screenshot, the bot replies to that
+        elif message.from_user.id != self._id:
+            options["reply_to_message_id"] = message.message_id
 
         # TODO: improve this check method
         # Check if the old message was pinned
@@ -492,24 +514,24 @@ class PoGORaidBot:
         except AttributeError:
             pinned = False
 
-        try:
-            # Delete the old bot message and the reply if it exists
-            self._bot.delete_message(message.chat.id, message.message_id)
-            if user_message is not None:
-                self._bot.delete_message(message.chat.id, user_message.message_id)
-        except error.BadRequest:
-            self.logger.info("The bot hasn't the permission to delete messages")
+        # Try to delete the screenshot if it's necessary
+        if message.reply_to_message is not None and raid.hangout is not None:
+            self._try_to_delete(message.reply_to_message)
+
+        # Try to delete the old message
+        if message.from_user.id == self._id:
+            self._try_to_delete(message)
 
         # Send new message
         new_msg = message.chat.send_message(raid.to_msg(),
-                                            disable_web_page_preview=True,
-                                            parse_mode=ParseMode.MARKDOWN,
-                                            reply_markup=InlineKeyboardMarkup([[
-                                                InlineKeyboardButton("\U00002795", callback_data=raid.code + ":a"),
-                                                InlineKeyboardButton("\U00002796", callback_data=raid.code + ":r"),
-                                                InlineKeyboardButton("\U00002708", callback_data=raid.code + ":f")
-                                            ]]))
+                                            **options)
 
         # Re-pin the new message
         if pinned:
             self._bot.pin_chat_message(message.chat.id, new_msg.message_id, disable_notification=True)
+
+    def _try_to_delete(self, message: Message):
+        try:
+            self._bot.delete_message(message.chat.id, message.message_id)
+        except error.BadRequest:
+            self.logger.info("The bot hasn't the permission to delete messages")
