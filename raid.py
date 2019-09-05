@@ -17,7 +17,7 @@ from gym import Gym
 @dataclass
 class Participant:
     id: int
-    username: str
+    name: str
     is_flyer: bool = False
     number: int = 1
 
@@ -39,14 +39,15 @@ class Raid:
 
     def add_participant(self, user: User) -> None:
         if user.id in self.participants:
-            self.participants[user.id].username = user.username
+            self.participants[user.id].name = user.full_name
             self.participants[user.id].number += 1
         else:
-            self.participants[user.id] = Participant(user.id, user.username)
+            self.participants[user.id] = Participant(user.id, user.full_name)
 
     def remove_participant(self, user: User) -> bool:
         if user.id in self.participants:
             if self.participants[user.id].number > 1:
+                self.participants[user.id].name = user.full_name
                 self.participants[user.id].number -= 1
             else:
                 del self.participants[user.id]
@@ -55,6 +56,7 @@ class Raid:
 
     def toggle_flyer(self, user: User) -> bool:
         if user.id in self.participants:
+            self.participants[user.id].name = user.full_name
             self.participants[user.id].is_flyer = not self.participants[user.id].is_flyer
             return True
         return False
@@ -105,7 +107,7 @@ class Raid:
             "{% if raid.participants|count > 0 %}"
                 "`─────────────────────`\n"
                 "{% for id, p in raid.participants.items() %}"
-                    "[{{ p.username }}](tg://user?id={{ id }})"
+                    "[{{ p.name }}](tg://user?id={{ id }})"
                     "{% if p.is_flyer %}\U00002708{% endif %}"
                     "{% if p.number > 1 %} +{{ p.number - 1 }} {% endif %}"
                     "\n"
