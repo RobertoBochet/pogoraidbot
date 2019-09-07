@@ -81,7 +81,7 @@ class Raid:
                 "&ll={{ raid.gym.latitude }},{{ raid.gym.longitude }}"
                 "&z=17)\n"
             "{% else %}"
-                "{{ raid.gym_name|wordwrap(25) }}\n"
+                "{{ raid.gym.name|wordwrap(25) }}\n"
             "{% endif %}"
             "\n"
             "{% if raid.boss is not none %}"            
