@@ -8,6 +8,7 @@ import pickle
 import re
 import traceback
 from typing import Callable
+from apscheduler.schedulers.background import BackgroundScheduler
 
 import cv2
 import redis
@@ -91,8 +92,15 @@ class PoGORaidBot:
 
                 return self.func(inst, update, context)
 
-    def __init__(self, token: str, host: str = "127.0.0.1", port: int = 6379, superadmin: int = None,
-                 bosses_file: str = None, gyms_file: str = None, debug_folder: str = None):
+    def __init__(self,
+                 token: str,
+                 host: str = "127.0.0.1",
+                 port: int = 6379,
+                 superadmin: int = None,
+                 bosses_file: str = None,
+                 gyms_file: str = None,
+                 debug_folder: str = None
+                 ):
         self.logger = logging.getLogger(__name__)
 
         # Init and test redis connection
@@ -107,14 +115,6 @@ class PoGORaidBot:
         # Add superadmin to the admins db
         if self._superadmin is not None:
             self._db_admins.set(self._superadmin, "superadmin")
-
-        # Load bosses list
-        if bosses_file is not None:
-            boss.load_bosses_list(bosses_file)
-
-        # Load gyms list
-        if gyms_file is not None:
-            gym.load_gyms_list(gyms_file)
 
         # Save debug folder
         self._debug_folder = debug_folder
@@ -161,6 +161,22 @@ class PoGORaidBot:
 
         # Set the handler for the errors
         self._updater.dispatcher.add_error_handler(self._handler_error)
+
+        # Creates background scheduler for update the db
+        self._scheduler = BackgroundScheduler(daemon=True)
+
+        # Creates job to update bosses list
+        if bosses_file is not None:
+            boss.load_bosses_list(bosses_file)
+            self._scheduler.add_job(lambda: boss.load_bosses_list(bosses_file), 'interval', hours=1)
+
+        # Creates job to update gyms list
+        if gyms_file is not None:
+            gym.load_gyms_list(gyms_file)
+            self._scheduler.add_job(lambda: gym.load_gyms_list(gyms_file), 'interval', hours=1)
+
+        # Starts the scheduler
+        self._scheduler.start()
 
         self.logger.info("Bot ready")
 
