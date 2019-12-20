@@ -98,7 +98,9 @@ class PoGORaidBot:
                  port: int = 6379,
                  superadmin: int = None,
                  bosses_file: str = None,
+                 bosses_expiration: int = 1,
                  gyms_file: str = None,
+                 gyms_expiration: int = 1,
                  debug_folder: str = None
                  ):
         self.logger = logging.getLogger(__name__)
@@ -168,12 +170,12 @@ class PoGORaidBot:
         # Creates job to update bosses list
         if bosses_file is not None:
             boss.load_bosses_list(bosses_file)
-            self._scheduler.add_job(lambda: boss.load_bosses_list(bosses_file), 'interval', hours=1)
+            self._scheduler.add_job(lambda: boss.load_bosses_list(bosses_file), 'interval', hours=bosses_expiration)
 
         # Creates job to update gyms list
         if gyms_file is not None:
             gym.load_gyms_list(gyms_file)
-            self._scheduler.add_job(lambda: gym.load_gyms_list(gyms_file), 'interval', hours=1)
+            self._scheduler.add_job(lambda: gym.load_gyms_list(gyms_file), 'interval', hours=gyms_expiration)
 
         # Starts the scheduler
         self._scheduler.start()
