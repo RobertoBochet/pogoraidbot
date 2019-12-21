@@ -157,8 +157,7 @@ class BossesList(List):
                 try:
                     if int(row[1]) < 0 or int(row[1]) > 5:
                         raise InvalidCSV
-                    if str2bool(row[2]):
-                        raise InvalidCSV
+                    str2bool(row[2])
                 except:
                     raise InvalidCSV
 
