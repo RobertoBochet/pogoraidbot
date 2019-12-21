@@ -17,6 +17,7 @@ from telegram.ext import Updater, MessageHandler, CallbackQueryHandler, CommandH
 from telegram.ext.filters import Filters
 
 import data
+import log
 from data import bosses
 from raid import Raid
 from screenshot import ScreenshotRaid
@@ -101,8 +102,13 @@ class PoGORaidBot:
                  bosses_expiration: int = 1,
                  gyms_file: str = None,
                  gyms_expiration: int = 1,
+                 log_level: int = logging.ERROR,
                  debug_folder: str = None
                  ):
+        # Inits log
+        log.initial_setup()
+        log.setup_log_levels(log_level)
+
         self.logger = logging.getLogger(__name__)
 
         # Init and test redis connection
@@ -110,7 +116,9 @@ class PoGORaidBot:
         self._db_admins = redis.Redis(host=host, port=port, db=1)
         self._db_disabledscan = redis.Redis(host=host, port=port, db=2)
         self._db_enabledchats = redis.Redis(host=host, port=port, db=3)
+        self.logger.info("Try to connect to Redis...")
         self._db_raids.ping()
+        self.logger.info("Connected with success to Redis")
 
         # Save superadmin
         self._superadmin = int(superadmin) if superadmin is not None else None
