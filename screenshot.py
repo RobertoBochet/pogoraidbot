@@ -9,8 +9,7 @@ import cv2
 import numpy as np
 import pytesseract
 
-import boss
-import gym
+from data import Boss, Gym, find_boss, find_gym, bosses, gyms
 import resources
 from cachedmethod import CachedMethod
 from exceptions import HatchingTimerNotFound, HatchingTimerUnreadable, RaidTimerNotFound, RaidTimerUnreadable, \
@@ -193,7 +192,7 @@ class ScreenshotRaid:
         logger.debug("raid timer not found")
         raise RaidTimerNotFound
 
-    def _find_gym(self) -> gym.Gym:
+    def _find_gym(self) -> Gym:
         # TODO: improve find gym method
         try:
             x, y, r = self._anchors["gym_image"]
@@ -217,17 +216,17 @@ class ScreenshotRaid:
         if ScreenshotRaid.debug:
             self._image_sections["gym_name"] = img
 
-        g = gym.find_gym(text)
+        g = find_gym(text)
 
         if g is not None:
             return g
 
-        return gym.Gym(name=text)
+        return Gym(name=text)
         # TODO: add the exception case
 
-    def _find_boss(self) -> Union[boss.Boss, None]:
+    def _find_boss(self) -> Union[Boss, None]:
         # Check if a list of available bosses was provided
-        if boss.bosses is None:
+        if bosses is None:
             raise BossesListNotAvailable
 
         # Force the calc of the level if it isn't already calculated
@@ -258,7 +257,7 @@ class ScreenshotRaid:
         text = " ".join(text.split())
 
         # Try to find a boss from text
-        b = boss.find_boss(text)
+        b = find_boss(text)
 
         # Check if a valid boss was found
         if b is None:
@@ -532,7 +531,7 @@ class ScreenshotRaid:
 
     @property
     @CachedMethod
-    def gym(self) -> Union[gym.Gym, None]:
+    def gym(self) -> Union[Gym, None]:
         try:
             return self._find_gym()
         except GymNotFound:
@@ -540,7 +539,7 @@ class ScreenshotRaid:
 
     @property
     @CachedMethod
-    def boss(self) -> Union[boss.Boss, None]:
+    def boss(self) -> Union[Boss, None]:
         try:
             return self._find_boss()
         except (BossesListNotAvailable, BossNotFound):

@@ -10,8 +10,7 @@ from typing import Dict
 from jinja2 import Template
 from telegram import User
 
-from boss import Boss
-from gym import Gym
+from data import Boss, Gym
 
 
 @dataclass
