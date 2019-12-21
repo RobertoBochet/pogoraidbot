@@ -9,9 +9,9 @@ import cv2
 import numpy as np
 import pytesseract
 
-from data import Boss, Gym, find_boss, find_gym, bosses, gyms
 import resources
 from cachedmethod import CachedMethod
+from data import Boss, Gym, find_gym, bosses
 from exceptions import HatchingTimerNotFound, HatchingTimerUnreadable, RaidTimerNotFound, RaidTimerUnreadable, \
     ExTagNotFound, ExTagUnreadable, LevelNotFound, TimeNotFound, HatchingTimerException, RaidTimerException, \
     GymNotFound, ExTagException, BossNotFound, BossesListNotAvailable
@@ -226,7 +226,7 @@ class ScreenshotRaid:
 
     def _find_boss(self) -> Union[Boss, None]:
         # Check if a list of available bosses was provided
-        if bosses is None:
+        if not bosses.is_loaded:
             raise BossesListNotAvailable
 
         # Force the calc of the level if it isn't already calculated
@@ -257,7 +257,7 @@ class ScreenshotRaid:
         text = " ".join(text.split())
 
         # Try to find a boss from text
-        b = find_boss(text)
+        b = bosses.find(text)
 
         # Check if a valid boss was found
         if b is None:

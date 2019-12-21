@@ -17,6 +17,7 @@ from telegram.ext import Updater, MessageHandler, CallbackQueryHandler, CommandH
 from telegram.ext.filters import Filters
 
 import data
+from data import bosses
 from raid import Raid
 from screenshot import ScreenshotRaid
 
@@ -168,8 +169,8 @@ class PoGORaidBot:
 
         # Creates job to update bosses list
         if bosses_file is not None:
-            data.load_bosses_list(bosses_file)
-            self._scheduler.add_job(lambda: data.load_bosses_list(bosses_file), 'interval', hours=bosses_expiration)
+            bosses.load_from(bosses_file)
+            self._scheduler.add_job(lambda: bosses.load_from(bosses_file), 'interval', hours=bosses_expiration)
 
         # Creates job to update gyms list
         if gyms_file is not None:
@@ -312,7 +313,7 @@ class PoGORaidBot:
         name = update.message.text.strip()
 
         # Search the boss
-        b = data.find_boss(name, 0.8)
+        b = bosses.find(name, 0.8)
 
         # If the boss wasn't found reply with an error
         if b is None:

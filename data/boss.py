@@ -10,9 +10,7 @@ from urllib.parse import urlparse
 import requests
 from schema import Schema, Or, Optional
 
-bosses: Union[List[Boss], None] = None
-
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -22,92 +20,97 @@ class Boss:
     is_there_shiny: bool = False
 
 
-def find_boss(boss_name: str, minimal_value: float = 0.4) -> Union[Boss, None]:
-    # check if there is a list of bosses
-    if bosses is None:
-        return None
+class BossesList(List):
+    def __init__(self):
+        super(BossesList, self).__init__()
+        self._is_loaded = False
 
-    current_most_similar_value = 0
-    current_most_similar = None
+    @property
+    def is_loaded(self) -> bool:
+        return self._is_loaded
 
-    # Compare the boss_name with each boss in the list and find the most similar
-    for b in bosses:
-        r = SequenceMatcher(None, b.name.lower(), boss_name.lower()).ratio()
-        logger.debug("{} - {}".format(r, b.name))
-        if r > current_most_similar_value and r > minimal_value:
-            current_most_similar_value = r
-            current_most_similar = b
+    def load_from(self, file: str) -> bool:
+        _logger.info("Try to load bosses list")
 
-    return current_most_similar
+        try:
+            # Check if the resource is remote
+            if bool(urlparse(file).scheme):
+                # Load the remote json
+                response = requests.get(file)
+                data = response.json()
 
+            else:
+                # Open the file and load it as json
+                with open(file, 'r') as f:
+                    data = json.load(f)
 
-def load_bosses_list(file: str) -> bool:
-    global bosses
-    bosses = None
+        except FileNotFoundError:
+            _logger.warning("Failed to load the bosses list: file not found")
+            return False
+        except requests.exceptions.ConnectionError:
+            _logger.warning("Failed to load the bosses list: an HTTP error occurred")
+            return False
+        except ValueError:
+            _logger.warning("Failed to load the bosses list: failed to decode json")
+            return False
 
-    logger.info("Try to load bosses list")
+        # Simple list of boss' names
+        schema1 = Schema([str])
 
-    try:
-        # Check if the resource is remote
-        if bool(urlparse(file).scheme):
-            # Load the remote json
-            response = requests.get(file)
-            data = response.json()
+        # Dictionary of boss' names and level
+        schema2 = Schema({
+            str: Or(1, 2, 3, 4, 5)
+        })
 
-        else:
-            # Open the file and load it as json
-            with open(file, 'r') as f:
-                data = json.load(f)
+        # List of Boss objects
+        schema3 = Schema([{
+            "name": str,
+            Optional("level"): int,
+            Optional("is_there_shiny"): bool
+        }])
 
-    except FileNotFoundError:
-        logger.warning("Failed to load the bosses list: file not found")
-        return False
-    except requests.exceptions.ConnectionError:
-        logger.warning("Failed to load the bosses list: an HTTP error occurred")
-        return False
-    except ValueError:
-        logger.warning("Failed to load the bosses list: failed to decode json")
-        return False
+        # Check if the list is valid
+        if schema1.is_valid(data):
+            self.clear()
+            for b in data:
+                self.append(Boss(b))
 
-    # Simple list of boss' names
-    schema1 = Schema([str])
+        elif schema2.is_valid(data):
+            self.clear()
+            for b in data:
+                self.append(Boss(
+                    name=b,
+                    level=data[b]
+                ))
 
-    # Dictionary of boss' names and level
-    schema2 = Schema({
-        str: Or(1, 2, 3, 4, 5)
-    })
+        elif schema3.is_valid(data):
+            self.clear()
+            for b in data:
+                self.append(Boss(**b))
 
-    # List of Boss objects
-    schema3 = Schema([{
-        "name": str,
-        Optional("level"): int,
-        Optional("is_there_shiny"): bool
-    }])
+        if self is None:
+            _logger.warning("The file is in a wrong format")
+            return False
 
-    # Check if the list is valid
-    if schema1.is_valid(data):
-        bosses = []
-        for b in data:
-            bosses.append(Boss(b))
+        _logger.debug(self)
 
-    elif schema2.is_valid(data):
-        bosses = []
-        for b in data:
-            bosses.append(Boss(
-                name=b,
-                level=data[b]
-            ))
+        _logger.info("Bosses list is loaded with {} bosses".format(len(self)))
+        self._is_loaded = True
+        return True
 
-    elif schema3.is_valid(data):
-        bosses = []
-        for b in data:
-            bosses.append(Boss(**b))
+    def find(self, name: str, minimal_value: float = 0.4) -> Union[Boss, None]:
+        if not self.is_loaded:
+            return None
 
-    if bosses is None:
-        logger.warning("The file is in a wrong format")
-        return False
+        current_most_similar_value = 0
+        current_most_similar = None
 
-    logger.debug(bosses)
+        # Compare the boss_name with each boss in the list and find the most similar
+        for b in self:
+            r = SequenceMatcher(None, b.name.lower(), name.lower()).ratio()
+            _logger.debug("{} - {}".format(r, b.name))
+            if r > current_most_similar_value and r > minimal_value:
+                current_most_similar_value = r
+                current_most_similar = b
 
-    logger.info("Bosses list is loaded with {} bosses".format(len(bosses)))
-    return True
+        return current_most_similar
