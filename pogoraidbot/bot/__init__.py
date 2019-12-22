@@ -11,8 +11,8 @@ import traceback
 from typing import Callable
 
 import cv2
-import redis
 from apscheduler.schedulers.background import BackgroundScheduler
+from redis import StrictRedis
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode, Update, Bot, Message, error
 from telegram.ext import Updater, MessageHandler, CallbackQueryHandler, CommandHandler, CallbackContext
 from telegram.ext.filters import Filters
@@ -96,6 +96,7 @@ class PoGORaidBot:
 
     def __init__(self,
                  token: str,
+                 redis: str = "redis://127.0.0.1:6379/0",
                  host: str = "127.0.0.1",
                  port: int = 6379,
                  superadmin: int = None,
@@ -112,7 +113,8 @@ class PoGORaidBot:
         self._logger = logging.getLogger(__name__)
 
         # Init and test redis connection
-        self._redis = redis.Redis(host=host, port=port, db=0)
+        self._redis = StrictRedis.from_url(url=redis, charset="utf-8", decode_responses=True)
+
         self._logger.info("Try to connect to Redis...")
         try:
             self._redis.ping()
@@ -217,7 +219,7 @@ class PoGORaidBot:
     @Decorator.ChatMustBeEnabled
     def _handler_screenshot(self, update: Update, _: CallbackContext) -> bool:
         self._logger.info("New image is arrived from {} by {}"
-                         .format(update.effective_chat.title, update.effective_user.username))
+                          .format(update.effective_chat.title, update.effective_user.username))
 
         # Check if scan is disabled for this group
         if self._redis.exists(update.effective_chat.id):
@@ -314,8 +316,8 @@ class PoGORaidBot:
             return False
 
         self._logger.info("A request to change boss was come from {}({}) by {}({})"
-                         .format(update.effective_chat.title, update.effective_chat.id,
-                                 update.effective_user.username, update.effective_user.id))
+                          .format(update.effective_chat.title, update.effective_chat.id,
+                                  update.effective_user.username, update.effective_user.id))
 
         self._logger.info("The user suggested \"{}\"".format(update.message.text.strip()))
 
@@ -396,7 +398,7 @@ class PoGORaidBot:
     @Decorator.UserMustBeBotAdmin
     def _handler_command_addadmin(self, update: Update, _: CallbackContext) -> bool:
         self._logger.info("User {} try to add {} as bot admin".format(update.message.from_user.id,
-                                                                     update.message.reply_to_message.from_user.id))
+                                                                      update.message.reply_to_message.from_user.id))
 
         # Check if the cited user is already a bot admin
         if self._redis.sismember(redis_keys.ADMIN, update.message.reply_to_message.from_user.id):
@@ -418,7 +420,7 @@ class PoGORaidBot:
     @Decorator.UserMustBeBotAdmin
     def _handler_command_removeadmin(self, update: Update, _: CallbackContext) -> bool:
         self._logger.info("User {} try to remove {} as bot admin".format(update.message.from_user.id,
-                                                                        update.message.reply_to_message.from_user.id))
+                                                                         update.message.reply_to_message.from_user.id))
 
         # Check if the mentioned user is the superadmin
         if self._redis.get(redis_keys.SUPERADMIN) == update.message.reply_to_message.from_user.id:
@@ -448,7 +450,7 @@ class PoGORaidBot:
     @Decorator.UserMustBeBotAdmin
     def _handler_command_enablechat(self, update: Update, _: CallbackContext) -> bool:
         self._logger.info("Bot admin {} try to enable the chat {}".format(update.message.from_user.id,
-                                                                         update.message.chat.id))
+                                                                          update.message.chat.id))
 
         # Check if this chat is already enabled
         if self._redis.sismember(redis_keys.ENABLEDCHAT, update.message.chat.id):
@@ -466,7 +468,7 @@ class PoGORaidBot:
     @Decorator.UserMustBeBotAdmin
     def _handler_command_disablechat(self, update: Update, _: CallbackContext) -> bool:
         self._logger.info("Bot admin {} try to disable the chat {}".format(update.message.from_user.id,
-                                                                          update.message.chat.id))
+                                                                           update.message.chat.id))
 
         # Check if this chat is not enabled
         if not self._redis.sismember(redis_keys.ENABLEDCHAT, update.message.chat.id):
