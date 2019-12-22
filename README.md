@@ -1,8 +1,8 @@
 ## Description
 
-This is a dockerized version of my telegram bot for organization of PoGo raid.
+This is dockerized version of my telegram bot for organization of PoGo raid.
 
-You can find the vanilla bot in [this](https://github.com/RobertoBochet/pogoraidbot) repo.
+You can find the vanilla bot in the branch **master**.
 
 ## Requirements
 
