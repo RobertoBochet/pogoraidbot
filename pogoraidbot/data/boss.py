@@ -13,6 +13,8 @@ import requests
 from mpu.string import str2bool
 from schema import Schema, Or, Optional
 
+from data.exceptions import InvalidJSON, InvalidCSV
+
 _logger = logging.getLogger(__name__)
 
 
@@ -21,14 +23,6 @@ class Boss:
     name: str
     level: int = None
     is_there_shiny: bool = False
-
-
-class InvalidJSON(Exception):
-    pass
-
-
-class InvalidCSV(Exception):
-    pass
 
 
 class BossesList(List):
@@ -170,15 +164,16 @@ class BossesList(List):
         if not self.is_loaded:
             return None
 
-        current_most_similar_value = 0
-        current_most_similar = None
-
+        _logger.debug("Try to find a candidate for '{}'".format(name))
         # Compare the boss_name with each boss in the list and find the most similar
-        for b in self:
-            r = SequenceMatcher(None, b.name.lower(), name.lower()).ratio()
-            _logger.debug("{} - {}".format(r, b.name))
-            if r > current_most_similar_value and r > minimal_value:
-                current_most_similar_value = r
-                current_most_similar = b
 
-        return current_most_similar
+        values = map(lambda x: (x, SequenceMatcher(None, name.lower(), x.name.lower()).ratio()), self)
+
+        value = max(values, key=lambda x: x[1])
+
+        if value[1] >= minimal_value:
+            _logger.debug("Found '{}' with confidence {:.3f}".format(value[0].name, value[1]))
+            return value[0]
+        else:
+            _logger.debug("No candidate found")
+            return None
