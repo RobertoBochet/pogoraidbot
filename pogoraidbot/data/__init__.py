@@ -1,5 +1,5 @@
 from .boss import Boss, BossesList
-from .gym import Gym, GymsList, find_gym, load_gyms_list
+from .gym import Gym, GymsList
 
 bosses = BossesList()
 
