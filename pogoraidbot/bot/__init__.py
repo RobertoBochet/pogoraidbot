@@ -12,7 +12,7 @@ from typing import Callable
 
 import cv2
 from apscheduler.schedulers.background import BackgroundScheduler
-from redis import StrictRedis
+from redis import StrictRedis, exceptions
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode, Update, Bot, Message, error
 from telegram.ext import Updater, MessageHandler, CallbackQueryHandler, CommandHandler, CallbackContext
 from telegram.ext.filters import Filters
@@ -97,8 +97,6 @@ class PoGORaidBot:
     def __init__(self,
                  token: str,
                  redis: str = "redis://127.0.0.1:6379/0",
-                 host: str = "127.0.0.1",
-                 port: int = 6379,
                  superadmin: int = None,
                  bosses_file: str = None,
                  bosses_expiration: int = 1,
@@ -118,7 +116,7 @@ class PoGORaidBot:
         self._logger.info("Try to connect to Redis...")
         try:
             self._redis.ping()
-        except redis.exceptions.ConnectionError:
+        except exceptions.ConnectionError:
             self._logger.critical("Unable to connect to Redis")
             sys.exit()
         self._logger.info("Successfully connected to Redis")
