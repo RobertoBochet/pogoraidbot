@@ -9,7 +9,7 @@ import cv2
 import numpy as np
 import pytesseract
 
-import resources
+from . import resources
 from cachedmethod import CachedMethod
 from data import Boss, Gym, find_gym, bosses
 from exceptions import HatchingTimerNotFound, HatchingTimerUnreadable, RaidTimerNotFound, RaidTimerUnreadable, \
