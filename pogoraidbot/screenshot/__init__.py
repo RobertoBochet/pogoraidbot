@@ -9,13 +9,13 @@ import cv2
 import numpy as np
 import pytesseract
 
-from . import resources
 from cachedmethod import CachedMethod
-from data import Boss, Gym, find_gym, bosses
+from data import Boss, Gym, gyms, bosses
 from exceptions import HatchingTimerNotFound, HatchingTimerUnreadable, RaidTimerNotFound, RaidTimerUnreadable, \
     ExTagNotFound, ExTagUnreadable, LevelNotFound, TimeNotFound, HatchingTimerException, RaidTimerException, \
     GymNotFound, ExTagException, BossNotFound, BossesListNotAvailable
 from raid import Raid
+from . import resources
 
 Rect = Tuple[Tuple[int, int], Tuple[int, int]]
 
@@ -216,7 +216,7 @@ class ScreenshotRaid:
         if ScreenshotRaid.debug:
             self._image_sections["gym_name"] = img
 
-        g = find_gym(text)
+        g = gyms.find(text)
 
         if g is not None:
             return g

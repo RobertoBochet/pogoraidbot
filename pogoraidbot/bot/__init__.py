@@ -16,9 +16,8 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode, Upda
 from telegram.ext import Updater, MessageHandler, CallbackQueryHandler, CommandHandler, CallbackContext
 from telegram.ext.filters import Filters
 
-import data
 import log
-from data import bosses
+from data import bosses, gyms
 from raid import Raid
 from screenshot import ScreenshotRaid
 
@@ -106,7 +105,7 @@ class PoGORaidBot:
                  debug_folder: str = None
                  ):
         # Inits log
-        log.LoggerSetup(["bot", "screenshot", "data.gym", "data.boss"], log_level)
+        log.LoggerSetup(["bot", "screenshot", "data.data", "data.gym", "data.boss"], log_level)
 
         self.logger = logging.getLogger(__name__)
 
@@ -181,8 +180,8 @@ class PoGORaidBot:
 
         # Creates job to update gyms list
         if gyms_file is not None:
-            data.load_gyms_list(gyms_file)
-            self._scheduler.add_job(lambda: data.load_gyms_list(gyms_file), 'interval', hours=gyms_expiration)
+            gyms.load_from(gyms_file)
+            self._scheduler.add_job(lambda: gyms.load_from(gyms_file), 'interval', hours=gyms_expiration)
 
         # Starts the scheduler
         self._scheduler.start()
