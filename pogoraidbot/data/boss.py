@@ -4,87 +4,29 @@ import csv
 import json
 import logging
 from dataclasses import dataclass
-from difflib import SequenceMatcher
 from io import StringIO
-from typing import Union, List
-from urllib.parse import urlparse
 
-import requests
 from mpu.string import str2bool
 from schema import Schema, Or, Optional
+
+from data.data import Data, DataList
+from data.exceptions import InvalidJSON, InvalidCSV
 
 _logger = logging.getLogger(__name__)
 
 
 @dataclass
-class Boss:
-    name: str
+class Boss(Data):
     level: int = None
     is_there_shiny: bool = False
 
 
-class InvalidJSON(Exception):
-    pass
-
-
-class InvalidCSV(Exception):
-    pass
-
-
-class BossesList(List):
-    def __init__(self):
-        super(BossesList, self).__init__()
-        self._is_loaded = False
-
+class BossesList(DataList):
     @property
-    def is_loaded(self) -> bool:
-        return self._is_loaded
-
-    def load_from(self, file: str) -> bool:
-        _logger.info("Try to load bosses list")
-
-        try:
-            # Check if the resource is remote
-            if bool(urlparse(file).scheme):
-                # Load the remote json
-                raw = requests.get(file).text
-
-            else:
-                # Open the file and load it as json
-                with open(file, 'r') as f:
-                    raw = f.read()
-
-        except FileNotFoundError:
-            _logger.warning("Failed to load the bosses list: file not found")
-            return False
-        except requests.exceptions.ConnectionError:
-            _logger.warning("Failed to load the bosses list: an HTTP error occurred")
-            return False
-
-        try:
-            self._load_json(raw)
-            self._is_loaded = True
-        except InvalidJSON:
-            pass
-
-        try:
-            self._load_csv(raw)
-            self._is_loaded = True
-        except InvalidCSV:
-            pass
-
-        if not self.is_loaded:
-            _logger.warning("The file is in a wrong format")
-            return False
-
-        _logger.debug(self)
-
-        _logger.info("Bosses list is loaded with {} bosses".format(len(self)))
-
-        return True
+    def _logger(self):
+        return _logger
 
     def _load_json(self, raw: str) -> None:
-        _logger.debug("Try JSON format")
         try:
             data = json.loads(raw)
         except ValueError:
@@ -130,7 +72,6 @@ class BossesList(List):
         raise InvalidJSON
 
     def _load_csv(self, raw: str) -> None:
-        _logger.debug("Try csv format")
 
         rows = csv.reader(StringIO(raw))
 
@@ -165,20 +106,3 @@ class BossesList(List):
             return
 
         raise InvalidCSV
-
-    def find(self, name: str, minimal_value: float = 0.4) -> Union[Boss, None]:
-        if not self.is_loaded:
-            return None
-
-        current_most_similar_value = 0
-        current_most_similar = None
-
-        # Compare the boss_name with each boss in the list and find the most similar
-        for b in self:
-            r = SequenceMatcher(None, b.name.lower(), name.lower()).ratio()
-            _logger.debug("{} - {}".format(r, b.name))
-            if r > current_most_similar_value and r > minimal_value:
-                current_most_similar_value = r
-                current_most_similar = b
-
-        return current_most_similar

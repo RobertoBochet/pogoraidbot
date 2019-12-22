@@ -9,8 +9,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("-t", "--token", dest="token", help="telegram bot token")
-    parser.add_argument("-r", "--host", dest="host", help="redis host")
-    parser.add_argument("-p", "--port", dest="port", help="redis port")
+    parser.add_argument("-r", "--redis", dest="redis", help="redis url in \"redis://{host}[:port]/{db}\" format")
     parser.add_argument("-a", "--superadmin", dest="superadmin", help="superadmin's id")
     parser.add_argument("-b", "--bosses-file", dest="bosses_file",
                         help="JSON or CSV file contains possible pokémons in the raids. It can be also provided over http(s)")
