@@ -1,0 +1,33 @@
+version: "3"
+
+services:
+  pogoraidbot:
+    image: robertobochet/pogoraidbot
+    restart: always
+    env_file: .env
+    environment:
+      - PGRB_REDIS_HOST=redis
+    depends_on:
+      - redis
+#   volumes:
+#     - ${PGRB_BOT_DEBUG_PATH}:/srv
+#   networks:
+#     pogoraidbot:
+#       ipv4_address: ${PGRB_NETWORK_IP_BOT}
+  redis:
+    image: redis:5-alpine
+    restart: always
+#   command: ["redis-server", "--appendonly", "yes"]
+#   volumes:
+#   - ${PGRB_REDIS_PATH}:/data
+#   networks:
+#     pogoraidbot:
+#       ipv4_address: ${PGRB_NETWORK_IP_REDIS}
+
+#networks:
+# pogoraidbot:
+#   driver: bridge
+#   ipam:
+#     driver: default
+#     config:
+#       - subnet: ${PGRB_NETWORK_SUBNET}
