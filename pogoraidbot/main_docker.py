@@ -8,8 +8,7 @@ if __name__ == "__main__":
     env = {}
 
     env["token"] = os.getenv("PGRB_BOT_TOKEN")
-    env["host"] = os.getenv("PGRB_REDIS_HOST")
-    env["port"] = os.getenv("PGRB_REDIS_PORT")
+    env["redis"] = os.getenv("PGRB_REDIS")
     env["superadmin"] = os.getenv("PGRB_BOT_SUPERADMIN")
     env["gyms_file"] = os.getenv("PGRB_BOT_GYMS_FILE")
     env["bosses_file"] = os.getenv("PGRB_BOT_BOSSES_FILE")
