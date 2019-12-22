@@ -6,6 +6,7 @@ import logging
 import os
 import pickle
 import re
+import sys
 import traceback
 from typing import Callable
 
@@ -17,6 +18,7 @@ from telegram.ext import Updater, MessageHandler, CallbackQueryHandler, CommandH
 from telegram.ext.filters import Filters
 
 import log
+import redis_keys
 from data import bosses, gyms
 from raid import Raid
 from screenshot import ScreenshotRaid
@@ -39,7 +41,7 @@ class PoGORaidBot:
                     chat = update.callback_query.message.chat
 
                 # Check if this chat is enabled
-                if not inst._db_enabledchats.exists(chat.id):
+                if not inst._db_config.sismember(redis_keys.ENABLEDCHAT, update.message.chat.id):
                     inst.logger.info("Chat {} is not enabled".format(chat.id))
 
                     return False
@@ -85,7 +87,7 @@ class PoGORaidBot:
 
             def __call__(self, inst: PoGORaidBot, update: Update, context: CallbackContext) -> bool:
                 # Check if the user is a bot admin
-                if not inst._db_admins.exists(update.message.from_user.id):
+                if not inst._db_config.sismember(redis_keys.ADMIN, update.message.from_user.id):
                     inst.logger.warning("User {} is not a bot admin".format(update.message.from_user.id))
 
                     return False
@@ -111,18 +113,21 @@ class PoGORaidBot:
 
         # Init and test redis connection
         self._db_raids = redis.Redis(host=host, port=port, db=0)
-        self._db_admins = redis.Redis(host=host, port=port, db=1)
-        self._db_disabledscan = redis.Redis(host=host, port=port, db=2)
-        self._db_enabledchats = redis.Redis(host=host, port=port, db=3)
+        self._db_config = redis.Redis(host=host, port=port, db=1)
         self.logger.info("Try to connect to Redis...")
-        self._db_raids.ping()
-        self.logger.info("Connected with success to Redis")
+        try:
+            self._db_raids.ping()
+        except redis.exceptions.ConnectionError:
+            self.logger.critical("Unable to connect to Redis")
+            sys.exit()
+        self.logger.info("Successfully connected to Redis")
 
         # Save superadmin
         self._superadmin = int(superadmin) if superadmin is not None else None
         # Add superadmin to the admins db
         if self._superadmin is not None:
-            self._db_admins.set(self._superadmin, "superadmin")
+            self._db_config.set(redis_keys.SUPERADMIN, self._superadmin)
+            self._db_config.sadd(redis_keys.ADMIN, self._superadmin)
 
         # Save debug folder
         self._debug_folder = debug_folder
@@ -216,7 +221,7 @@ class PoGORaidBot:
                          .format(update.effective_chat.title, update.effective_user.username))
 
         # Check if scan is disabled for this group
-        if self._db_disabledscan.exists(update.effective_chat.id):
+        if self._db_config.exists(update.effective_chat.id):
             self.logger.info("Screenshots scan for chat {} is disabled".format(update.effective_chat.id))
             return False
 
@@ -349,7 +354,7 @@ class PoGORaidBot:
     @Decorator.UserMustBeAdmin
     def _handler_command_disablescan(self, update: Update, _: CallbackContext) -> bool:
         # Add current chat to the db of disabled scan
-        self._db_disabledscan.set(update.message.chat.id, "")
+        self._db_config.sadd(redis_keys.DISABLEDSCAN, update.message.chat.id)
 
         self.logger.info("Disable scan for chat {}".format(update.message.chat.id))
         update.message.chat.send_message("The scan now is disabled")
@@ -360,7 +365,7 @@ class PoGORaidBot:
     @Decorator.UserMustBeAdmin
     def _handler_command_enablescan(self, update: Update, _: CallbackContext) -> bool:
         # Remove current chat from the db of disabled scan
-        self._db_disabledscan.delete(update.message.chat.id)
+        self._db_config.srem(redis_keys.DISABLEDSCAN, update.message.chat.id)
 
         self.logger.info("Enable scan for chat {}".format(update.message.chat.id))
         update.message.chat.send_message("The scan now is enabled")
@@ -395,7 +400,7 @@ class PoGORaidBot:
                                                                      update.message.reply_to_message.from_user.id))
 
         # Check if the cited user is already a bot admin
-        if self._db_admins.exists(update.message.reply_to_message.from_user.id):
+        if self._db_config.sismember(redis_keys.ADMIN, update.message.reply_to_message.from_user.id):
             self.logger.info("User {} is already a bot admin".format(update.message.reply_to_message.from_user.id))
             update.message.reply_markdown("[{}](tg://user?id={}) is already a bot admin"
                                           .format(update.message.reply_to_message.from_user.username,
@@ -403,8 +408,7 @@ class PoGORaidBot:
             return False
 
         # Add cited user as bot admin
-        self._db_admins.set(update.message.reply_to_message.from_user.id,
-                            update.message.reply_to_message.from_user.username)
+        self._db_config.sadd(redis_keys.ADMIN, update.message.reply_to_message.from_user.id)
         self.logger.info("User {} is now a bot admin".format(update.message.reply_to_message.from_user.id))
         update.message.reply_markdown("[{}](tg://user?id={}) is now a bot admin"
                                       .format(update.message.reply_to_message.from_user.username,
@@ -418,7 +422,7 @@ class PoGORaidBot:
                                                                         update.message.reply_to_message.from_user.id))
 
         # Check if the mentioned user is the superadmin
-        if self._superadmin == update.message.reply_to_message.from_user.id:
+        if self._db_config.get(redis_keys.SUPERADMIN) == update.message.reply_to_message.from_user.id:
             self.logger.info("User {} is the superadmin".format(update.message.reply_to_message.from_user.id))
             update.message.reply_markdown("[{}](tg://user?id={}) is the superadmin and it cannot be removed"
                                           .format(update.message.reply_to_message.from_user.username,
@@ -426,7 +430,7 @@ class PoGORaidBot:
             return False
 
         # Check if the cited user is not a bot admin
-        if not self._db_admins.exists(update.message.reply_to_message.from_user.id):
+        if not self._db_config.sismember(redis_keys.ADMIN, update.message.reply_to_message.from_user.id):
             self.logger.info("User {} is not a bot admin".format(update.message.reply_to_message.from_user.id))
             update.message.reply_markdown("[{}](tg://user?id={}) is not a bot admin"
                                           .format(update.message.reply_to_message.from_user.username,
@@ -434,7 +438,7 @@ class PoGORaidBot:
             return False
 
         # Remove cited user as bot admin
-        self._db_admins.delete(update.message.reply_to_message.from_user.id)
+        self._db_config.srem(redis_keys.ADMIN, update.message.reply_to_message.from_user.id)
         self.logger.info("User {} is no longer a bot admin".format(update.message.reply_to_message.from_user.id))
         update.message.reply_markdown("[{}](tg://user?id={}) is no longer a bot admin"
                                       .format(update.message.reply_to_message.from_user.username,
@@ -448,13 +452,13 @@ class PoGORaidBot:
                                                                          update.message.chat.id))
 
         # Check if this chat is already enabled
-        if self._db_enabledchats.exists(update.message.chat.id):
+        if self._db_config.sismember(redis_keys.ENABLEDCHAT, update.message.chat.id):
             self.logger.info("Chat {} is already enabled".format(update.message.chat.id))
             update.message.reply_markdown("This chat is already enabled")
             return False
 
         # Add this chat to the enabled
-        self._db_enabledchats.set(update.message.chat.id, "")
+        self._db_config.sadd(redis_keys.ENABLEDCHAT, update.message.chat.id)
         self.logger.info("Chat {} is now enabled".format(update.message.chat.id))
         update.message.reply_markdown("This chat is now enabled")
 
@@ -466,13 +470,13 @@ class PoGORaidBot:
                                                                           update.message.chat.id))
 
         # Check if this chat is not enabled
-        if not self._db_enabledchats.exists(update.message.chat.id):
+        if not self._db_config.sismember(redis_keys.ENABLEDCHAT, update.message.chat.id):
             self.logger.info("Chat {} is not enabled".format(update.message.chat.id))
             update.message.reply_markdown("This chat is not enabled")
             return False
 
         # Remove this chat to the enabled
-        self._db_enabledchats.delete(update.message.chat.id)
+        self._db_config.srem(redis_keys.ENABLEDCHAT, update.message.chat.id)
         self.logger.info("Chat {} is no longer enabled".format(update.message.chat.id))
         update.message.reply_markdown("This chat is no longer enabled")
 
@@ -559,3 +563,6 @@ class PoGORaidBot:
             self._bot.delete_message(message.chat.id, message.message_id)
         except error.BadRequest:
             self.logger.info("The bot hasn't the permission to delete messages")
+
+    def _init_db(self):
+        pass
