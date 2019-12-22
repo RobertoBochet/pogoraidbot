@@ -106,8 +106,7 @@ class PoGORaidBot:
                  debug_folder: str = None
                  ):
         # Inits log
-        log.initial_setup()
-        log.setup_log_levels(log_level)
+        log.LoggerSetup(["bot", "screenshot", "data.gym", "data.boss"], log_level)
 
         self.logger = logging.getLogger(__name__)
 
