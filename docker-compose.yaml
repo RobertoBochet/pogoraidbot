@@ -6,7 +6,7 @@ services:
     restart: always
     env_file: .env
     environment:
-      - PGRB_REDIS=redis://redis/0
+      - PGRB_BOT_REDIS=redis://redis/0
     depends_on:
       - redis
 #   volumes:
