@@ -99,9 +99,9 @@ class PoGORaidBot:
                  redis: str = "redis://127.0.0.1:6379/0",
                  superadmin: int = None,
                  bosses_file: str = None,
-                 bosses_expiration: int = 1,
+                 bosses_expiration: int = 12,
                  gyms_file: str = None,
-                 gyms_expiration: int = 1,
+                 gyms_expiration: int = 12,
                  log_level: int = logging.ERROR,
                  debug_folder: str = None
                  ):
@@ -180,12 +180,12 @@ class PoGORaidBot:
         # Creates job to update bosses list
         if bosses_file is not None:
             bosses.load_from(bosses_file)
-            self._scheduler.add_job(lambda: bosses.load_from(bosses_file), 'interval', hours=bosses_expiration)
+            self._scheduler.add_job(lambda: bosses.load_from(bosses_file), 'interval', hours=int(bosses_expiration))
 
         # Creates job to update gyms list
         if gyms_file is not None:
             gyms.load_from(gyms_file)
-            self._scheduler.add_job(lambda: gyms.load_from(gyms_file), 'interval', hours=gyms_expiration)
+            self._scheduler.add_job(lambda: gyms.load_from(gyms_file), 'interval', hours=int(gyms_expiration))
 
         # Starts the scheduler
         self._scheduler.start()
