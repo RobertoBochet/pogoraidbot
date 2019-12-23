@@ -131,7 +131,9 @@ class PoGORaidBot:
         # Save debug folder
         self._debug_folder = debug_folder
         if self._debug_folder is not None:
+            self._debug_folder = os.path.abspath(debug_folder)
             ScreenshotRaid.debug = True
+            self._logger.info("\"{}\" was set as debug folder".format(self._debug_folder))
 
         # Init the bot
         self._bot = Bot(token)
@@ -502,22 +504,27 @@ class PoGORaidBot:
         # Save the raid in the db
         self._redis.setex(redis_keys.RAID.format(raid.code), 60 * 60 * 6, pickle.dumps(raid))
 
-        # Save sections of image if it is required
-        try:
-            if self._debug_folder is not None:
-                cv2.imwrite(os.path.join(self._debug_folder, "{}-anchors.png".format(raid.code)),
-                            screen._get_anchors_image())
-                for s in screen._image_sections:
-                    cv2.imwrite(os.path.join(self._debug_folder, "{}-{}.png".format(raid.code, s)),
-                                screen._image_sections[s])
-        except Exception:
-            traceback.print_exc()
-            self._logger.warning("Failed to save sections of image")
-
+        # Send reply
         try:
             self._post_raid(raid, message)
         except:
-            traceback.print_exc()
+            traceback.print_exc()  # TODO: Remove this debug method
+
+        # Save sections of image if it is required
+        if self._debug_folder is not None:
+            try:
+                os.makedirs(self._debug_folder, exist_ok=True)
+
+                res = cv2.imwrite(os.path.join(self._debug_folder, "{}-anchors.png".format(raid.code)),
+                                  screen._get_anchors_image())
+                for s in screen._image_sections:
+                    res = cv2.imwrite(os.path.join(self._debug_folder, "{}-{}.png".format(raid.code, s)),
+                                      screen._image_sections[s]) and res
+                if not res:
+                    self._logger.warning("Something was gone wrong during save sections of image")
+
+            except PermissionError:
+                self._logger.warning("Unable to create debug folder")
 
     def _post_raid(self, raid: Raid, message: Message) -> None:
         options = {
