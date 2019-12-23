@@ -111,7 +111,7 @@ class PoGORaidBot:
         self._logger = logging.getLogger(__name__)
 
         # Init and test redis connection
-        self._redis = StrictRedis.from_url(url=redis, charset="utf-8", decode_responses=True)
+        self._redis = StrictRedis.from_url(url=redis, charset="utf-8", decode_responses=False)
 
         self._logger.info("Try to connect to Redis...")
         try:
@@ -244,6 +244,7 @@ class PoGORaidBot:
             # Try to retrieve the raid information
             raid = pickle.loads(self._redis.get(redis_keys.RAID.format(code)))
         except Exception:  # TODO: improve except
+            traceback.print_exc()
             self._logger.warning("A invalid to bot message reply was come")
             return False
 
