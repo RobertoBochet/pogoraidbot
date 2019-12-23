@@ -36,13 +36,13 @@ class PoGORaidBot:
 
             def __call__(self, inst: PoGORaidBot, update: Update, context: CallbackContext) -> bool:
                 try:
-                    chat = update.message.chat
+                    chat_id = update.message.chat_id
                 except AttributeError:
-                    chat = update.callback_query.message.chat
+                    chat_id = update.callback_query.message.chat_id
 
                 # Check if this chat is enabled
-                if not inst._redis.sismember(redis_keys.ENABLEDCHAT, update.message.chat.id):
-                    inst._logger.info("Chat {} is not enabled".format(chat.id))
+                if not inst._redis.sismember(redis_keys.ENABLEDCHAT, chat_id):
+                    inst._logger.info("Chat {} is not enabled".format(chat_id))
 
                     return False
 
