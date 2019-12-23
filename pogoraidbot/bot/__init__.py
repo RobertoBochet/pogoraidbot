@@ -130,6 +130,8 @@ class PoGORaidBot:
 
         # Save debug folder
         self._debug_folder = debug_folder
+        if self._debug_folder is not None:
+            ScreenshotRaid.debug = True
 
         # Init the bot
         self._bot = Bot(token)
@@ -509,6 +511,7 @@ class PoGORaidBot:
                     cv2.imwrite(os.path.join(self._debug_folder, "{}-{}.png".format(raid.code, s)),
                                 screen._image_sections[s])
         except Exception:
+            traceback.print_exc()
             self._logger.warning("Failed to save sections of image")
 
         try:
