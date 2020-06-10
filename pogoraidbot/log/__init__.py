@@ -1,26 +1,18 @@
-__all__ = ["LoggerSetup"]
-
 import logging
-from typing import Union, List
+from typing import Union
 
-VERBOSITY_LEVELS = {
-    "CRITICAL": logging.CRITICAL,
-    "ERROR": logging.ERROR,
-    "WARNING": logging.WARNING,
-    "INFO": logging.INFO,
-    "DEBUG": logging.DEBUG
-}
+PACKAGE_LOGGERS = [
+    "pogoraidbot.bot",
+    "pogoraidbot.screenshot",
+    "pogoraidbot.data.data",
+    "pogoraidbot.data.gym",
+    "pogoraidbot.data.boss"
+]
 
-class LoggerSetup:
-    def __init__(self,loggers: List[str], log_level: Union[int, str], modules_log_level: Union[int, str] = logging.ERROR):
-        if isinstance(log_level, str):
-            log_level = VERBOSITY_LEVELS[log_level]
 
-        if isinstance(modules_log_level, str):
-            modules_log_level = VERBOSITY_LEVELS[modules_log_level]
+def logger_setup(log_level: Union[int, str] = logging.ERROR, modules_log_level: int = logging.ERROR):
+    # Set format for the log
+    logging.basicConfig(format="%(levelname)s|%(name)s|%(message)s", level=modules_log_level)
 
-        # Set format for the log
-        logging.basicConfig(format="%(levelname)s|%(name)s|%(message)s", level=modules_log_level)
-
-        for l in loggers:
-            logging.getLogger(l).setLevel(log_level)
+    for l in PACKAGE_LOGGERS:
+        logging.getLogger(l).setLevel(log_level)

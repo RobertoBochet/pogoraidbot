@@ -17,7 +17,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode, Upda
 from telegram.ext import Updater, MessageHandler, CallbackQueryHandler, CommandHandler, CallbackContext
 from telegram.ext.filters import Filters
 
-from .. import log, redis_keys
+from .. import redis_keys
 from ..data import bosses, gyms
 from ..raid import Raid
 from ..screenshot import ScreenshotRaid
@@ -101,18 +101,8 @@ class PoGORaidBot:
                  bosses_expiration: int = 12,
                  gyms_file: str = None,
                  gyms_expiration: int = 12,
-                 log_level: int = logging.ERROR,
                  debug_folder: str = None
                  ):
-        # Inits log
-        log.LoggerSetup([
-            "pogoraidbot.bot",
-            "pogoraidbot.screenshot",
-            "pogoraidbot.data.data",
-            "pogoraidbot.data.gym",
-            "pogoraidbot.data.boss"
-        ], log_level)
-
         self._logger = logging.getLogger(__name__)
 
         # Init and test redis connection

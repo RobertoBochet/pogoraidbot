@@ -3,6 +3,7 @@ import argparse
 import logging
 import os
 
+from .log import logger_setup
 from pogoraidbot import PoGORaidBot
 
 if __name__ == "__main__":
@@ -23,7 +24,7 @@ if __name__ == "__main__":
     parser.add_argument("-e", "--env", dest="env", action="store_true",
                         help="Use environment variables for the configuration")
     parser.add_argument("-d", "--debug-folder", dest="debug_folder", help="debug folder")
-    parser.add_argument("-v", dest="log_level", action="count", default=0,
+    parser.add_argument("-v", dest="log_level", action="count",
                         help="number of -v specifics level of verbosity")
     parser.add_argument("--info", dest="log_level", action="store_const", const=2, help="equal to -vv")
     parser.add_argument("--debug", dest="log_level", action="store_const", const=3, help="equal to -vvv")
@@ -57,22 +58,24 @@ if __name__ == "__main__":
     del args["env"]
 
     # Parses the verbosity level
-    if "log_level" in args:
-        try:
-            args["log_level"] = {
-                0: logging.ERROR,
-                1: logging.WARNING,
-                2: logging.INFO,
-                3: logging.DEBUG,
-                "ERROR": logging.ERROR,
-                "WARNING": logging.WARNING,
-                "INFO": logging.INFO,
-                "DEBUG": logging.DEBUG
-            }[args["log_level"]]
+    try:
+        logger_setup({
+            0: logging.ERROR,
+            1: logging.WARNING,
+            2: logging.INFO,
+            3: logging.DEBUG,
+            "ERROR": logging.ERROR,
+            "WARNING": logging.WARNING,
+            "INFO": logging.INFO,
+            "DEBUG": logging.DEBUG
+        }[args["log_level"]])
 
-        except KeyError:
-            del args["log_level"]
-    print(args)
+    except KeyError:
+        logger_setup()
+
+    if "log_level" in args:
+        del args["log_level"]
+
     # Creates the bot
     bot = PoGORaidBot(**args)
 
