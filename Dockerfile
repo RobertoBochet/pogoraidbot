@@ -18,4 +18,4 @@ COPY ./pogoraidbot/ /opt
 
 WORKDIR /opt
 
-ENTRYPOINT python3 /opt/main_docker.py
+ENTRYPOINT python3 /opt/__main__.py -e
