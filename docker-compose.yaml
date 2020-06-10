@@ -15,7 +15,7 @@ services:
 #     pogoraidbot:
 #       ipv4_address: ${PGRB_NETWORK_IP_BOT}
   redis:
-    image: redis:5-alpine
+    image: redis:6-alpine
     restart: always
 #   command: ["redis-server", "--appendonly", "yes"]
 #   volumes:
