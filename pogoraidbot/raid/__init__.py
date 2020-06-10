@@ -14,26 +14,25 @@ from telegram import User
 from data import Boss, Gym
 
 
-class ParticipantType(Enum):
-    NORMAL = 1
-    REMOTE = 2
-    FLYER = 3
-
-
 @dataclass
 class Participant:
+    class Type(Enum):
+        NORMAL = 1
+        REMOTE = 2
+        FLYER = 3
+
     id: int
     name: str
-    type: ParticipantType = ParticipantType.NORMAL
+    type: Type = Type.NORMAL
     number: int = 1
 
     @property
     def is_remote(self) -> bool:
-        return self.type == ParticipantType.REMOTE
+        return self.type == Participant.Type.REMOTE
 
     @property
     def is_flyer(self) -> bool:
-        return self.type == ParticipantType.FLYER
+        return self.type == Participant.Type.FLYER
 
 
 @dataclass
@@ -71,14 +70,16 @@ class Raid:
     def toggle_remote(self, user: User) -> bool:
         if user.id in self.participants:
             self.participants[user.id].name = user.full_name
-            self.participants[user.id].type = ParticipantType.REMOTE if self.participants[user.id].type != ParticipantType.REMOTE else ParticipantType.NORMAL
+            self.participants[user.id].type = Participant.Type.REMOTE if self.participants[
+                                                                             user.id].type != Participant.Type.REMOTE else Participant.Type.NORMAL
             return True
         return False
 
     def toggle_flyer(self, user: User) -> bool:
         if user.id in self.participants:
             self.participants[user.id].name = user.full_name
-            self.participants[user.id].type = ParticipantType.FLYER if self.participants[user.id].type != ParticipantType.FLYER else ParticipantType.NORMAL
+            self.participants[user.id].type = Participant.Type.FLYER if self.participants[
+                                                                            user.id].type != Participant.Type.FLYER else Participant.Type.NORMAL
             return True
         return False
 
