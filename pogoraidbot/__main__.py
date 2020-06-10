@@ -3,7 +3,7 @@ import argparse
 import logging
 import os
 
-from bot import PoGORaidBot
+from pogoraidbot import PoGORaidBot
 
 if __name__ == "__main__":
     # Gets inline arguments
@@ -72,7 +72,7 @@ if __name__ == "__main__":
 
         except KeyError:
             del args["log_level"]
-
+    print(args)
     # Creates the bot
     bot = PoGORaidBot(**args)
 

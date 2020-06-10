@@ -9,12 +9,12 @@ import cv2
 import numpy as np
 import pytesseract
 
-from cachedmethod import CachedMethod
-from data import Boss, Gym, gyms, bosses
-from exceptions import HatchingTimerNotFound, HatchingTimerUnreadable, RaidTimerNotFound, RaidTimerUnreadable, \
+from ..cachedmethod import CachedMethod
+from ..data import Boss, Gym, gyms, bosses
+from ..exceptions import HatchingTimerNotFound, HatchingTimerUnreadable, RaidTimerNotFound, RaidTimerUnreadable, \
     ExTagNotFound, ExTagUnreadable, LevelNotFound, TimeNotFound, HatchingTimerException, RaidTimerException, \
     GymNotFound, ExTagException, BossNotFound, BossesListNotAvailable
-from raid import Raid
+from ..raid import Raid
 from . import resources
 
 Rect = Tuple[Tuple[int, int], Tuple[int, int]]

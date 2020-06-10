@@ -17,11 +17,10 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode, Upda
 from telegram.ext import Updater, MessageHandler, CallbackQueryHandler, CommandHandler, CallbackContext
 from telegram.ext.filters import Filters
 
-import log
-import redis_keys
-from data import bosses, gyms
-from raid import Raid
-from screenshot import ScreenshotRaid
+from .. import log, redis_keys
+from ..data import bosses, gyms
+from ..raid import Raid
+from ..screenshot import ScreenshotRaid
 
 
 class PoGORaidBot:
@@ -106,7 +105,13 @@ class PoGORaidBot:
                  debug_folder: str = None
                  ):
         # Inits log
-        log.LoggerSetup(["bot", "screenshot", "data.data", "data.gym", "data.boss"], log_level)
+        log.LoggerSetup([
+            "pogoraidbot.bot",
+            "pogoraidbot.screenshot",
+            "pogoraidbot.data.data",
+            "pogoraidbot.data.gym",
+            "pogoraidbot.data.boss"
+        ], log_level)
 
         self._logger = logging.getLogger(__name__)
 

@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 
 import requests
 
-from data.exceptions import InvalidJSON, InvalidCSV
+from .exceptions import InvalidJSON, InvalidCSV
 
 _logger = logging.getLogger(__name__)
 

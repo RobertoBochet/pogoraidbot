@@ -5,8 +5,8 @@ import logging
 from dataclasses import dataclass
 from typing import Union, List
 
-from data.data import DataList, Data
-from data.exceptions import InvalidJSON
+from .data import DataList, Data
+from .exceptions import InvalidJSON
 
 gyms: Union[List[Gym], None] = None
 

@@ -9,8 +9,8 @@ from io import StringIO
 from mpu.string import str2bool
 from schema import Schema, Or, Optional
 
-from data.data import Data, DataList
-from data.exceptions import InvalidJSON, InvalidCSV
+from .data import Data, DataList
+from .exceptions import InvalidJSON, InvalidCSV
 
 _logger = logging.getLogger(__name__)
 

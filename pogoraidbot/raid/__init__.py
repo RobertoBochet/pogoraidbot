@@ -11,7 +11,7 @@ from typing import Dict
 from jinja2 import Template
 from telegram import User
 
-from data import Boss, Gym
+from ..data import Boss, Gym
 
 
 @dataclass
