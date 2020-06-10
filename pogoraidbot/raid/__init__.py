@@ -4,6 +4,7 @@ import datetime
 import random
 import string
 from dataclasses import dataclass, field
+from enum import Enum
 from functools import reduce
 from typing import Dict
 
@@ -13,12 +14,26 @@ from telegram import User
 from data import Boss, Gym
 
 
+class ParticipantType(Enum):
+    NORMAL = 1
+    REMOTE = 2
+    FLYER = 3
+
+
 @dataclass
 class Participant:
     id: int
     name: str
-    is_flyer: bool = False
+    type: ParticipantType = ParticipantType.NORMAL
     number: int = 1
+
+    @property
+    def is_remote(self) -> bool:
+        return self.type == ParticipantType.REMOTE
+
+    @property
+    def is_flyer(self) -> bool:
+        return self.type == ParticipantType.FLYER
 
 
 @dataclass
@@ -53,10 +68,17 @@ class Raid:
             return True
         return False
 
+    def toggle_remote(self, user: User) -> bool:
+        if user.id in self.participants:
+            self.participants[user.id].name = user.full_name
+            self.participants[user.id].type = ParticipantType.REMOTE if self.participants[user.id].type != ParticipantType.REMOTE else ParticipantType.NORMAL
+            return True
+        return False
+
     def toggle_flyer(self, user: User) -> bool:
         if user.id in self.participants:
             self.participants[user.id].name = user.full_name
-            self.participants[user.id].is_flyer = not self.participants[user.id].is_flyer
+            self.participants[user.id].type = ParticipantType.FLYER if self.participants[user.id].type != ParticipantType.FLYER else ParticipantType.NORMAL
             return True
         return False
 
@@ -107,6 +129,7 @@ class Raid:
                 "`─────────────────────`\n"
                 "{% for id, p in raid.participants.items() %}"
                     "[{{ p.name }}](tg://user?id={{ id }})"
+                    "{% if p.is_remote %}\U0001F3E1{% endif %}"
                     "{% if p.is_flyer %}\U00002708{% endif %}"
                     "{% if p.number > 1 %} +{{ p.number - 1 }} {% endif %}"
                     "\n"

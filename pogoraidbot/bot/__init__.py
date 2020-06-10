@@ -272,7 +272,7 @@ class PoGORaidBot:
     def _handler_buttons(self, update: Update, _: CallbackContext) -> bool:
         try:
             # Validate the data
-            result = re.match(r"([a-zA-Z0-9]{8}):([arf])", update.callback_query.data)
+            result = re.match(r"([a-zA-Z0-9]{8}):([arhf])", update.callback_query.data)
             # Try to retrieve the raid information
             raid = pickle.loads(self._redis.get(redis_keys.RAID.format(result.group(1))))
             # Get operation
@@ -288,6 +288,8 @@ class PoGORaidBot:
             raid.add_participant(update.callback_query.from_user)
         elif op == "r":
             raid.remove_participant(update.callback_query.from_user)
+        elif op == "h":
+            raid.toggle_remote(update.callback_query.from_user)
         elif op == "f":
             raid.toggle_flyer(update.callback_query.from_user)
         else:
@@ -538,6 +540,7 @@ class PoGORaidBot:
             options["reply_markup"] = InlineKeyboardMarkup([[
                 InlineKeyboardButton("\U00002795", callback_data=raid.code + ":a"),
                 InlineKeyboardButton("\U00002796", callback_data=raid.code + ":r"),
+                InlineKeyboardButton("\U0001F3E1", callback_data=raid.code + ":h"),
                 InlineKeyboardButton("\U00002708", callback_data=raid.code + ":f")
             ]])
 
