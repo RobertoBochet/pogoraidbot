@@ -10,12 +10,10 @@ RUN rm -rf /var/lib/apt/lists/*
 
 VOLUME /srv
 
-COPY ./pogoraidbot/requirements.txt /opt/
+COPY ./pogoraidbot/requirements.txt /pogoraidbot/
 
-RUN pip3 install -r /opt/requirements.txt
+RUN pip3 install -r /pogoraidbot/requirements.txt
 
-COPY ./pogoraidbot/ /opt
+COPY ./pogoraidbot/ /pogoraidbot
 
-WORKDIR /opt
-
-ENTRYPOINT python3 /opt/__main__.py -e
+ENTRYPOINT python3 -m pogoraidbot -e
