@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import csv
 import json
-import logging
 from dataclasses import dataclass
 from io import StringIO
 
@@ -12,8 +11,6 @@ from schema import Schema, Or, Optional
 from .data import Data, DataList
 from .exceptions import InvalidJSON, InvalidCSV
 
-_logger = logging.getLogger(__name__)
-
 
 @dataclass
 class Boss(Data):
@@ -22,10 +19,6 @@ class Boss(Data):
 
 
 class BossesList(DataList):
-    @property
-    def _logger(self):
-        return _logger
-
     def _load_json(self, raw: str) -> None:
         try:
             data = json.loads(raw)

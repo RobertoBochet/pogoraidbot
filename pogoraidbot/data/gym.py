@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import logging
 from dataclasses import dataclass
 from typing import Union, List
 
@@ -9,10 +8,6 @@ from .data import DataList, Data
 from .exceptions import InvalidJSON
 
 gyms: Union[List[Gym], None] = None
-
-_logger = logging.getLogger(__name__)
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -22,10 +17,6 @@ class Gym(Data):
 
 
 class GymsList(DataList):
-    @property
-    def _logger(self):
-        return _logger
-
     def _load_json(self, raw: str) -> None:
         try:
             data = json.loads(raw)

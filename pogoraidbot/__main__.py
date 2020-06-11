@@ -3,8 +3,8 @@ import argparse
 import logging
 import os
 
-from .log import logger_setup
 from pogoraidbot import PoGORaidBot
+from .log import logger_setup
 
 if __name__ == "__main__":
     # Gets inline arguments
@@ -60,15 +60,15 @@ if __name__ == "__main__":
     # Parses the verbosity level
     try:
         logger_setup({
-            0: logging.ERROR,
-            1: logging.WARNING,
-            2: logging.INFO,
-            3: logging.DEBUG,
-            "ERROR": logging.ERROR,
-            "WARNING": logging.WARNING,
-            "INFO": logging.INFO,
-            "DEBUG": logging.DEBUG
-        }[args["log_level"]])
+                         0: logging.ERROR,
+                         1: logging.WARNING,
+                         2: logging.INFO,
+                         3: logging.DEBUG,
+                         "ERROR": logging.ERROR,
+                         "WARNING": logging.WARNING,
+                         "INFO": logging.INFO,
+                         "DEBUG": logging.DEBUG
+                     }[args["log_level"]])
 
     except KeyError:
         logger_setup()

@@ -22,6 +22,7 @@ from ..data import bosses, gyms
 from ..raid import Raid
 from ..screenshot import ScreenshotRaid
 
+_LOGGER = logging.getLogger(__package__)
 
 class PoGORaidBot:
     class Decorator:
@@ -103,18 +104,16 @@ class PoGORaidBot:
                  gyms_expiration: int = 12,
                  debug_folder: str = None
                  ):
-        self._logger = logging.getLogger(__name__)
-
         # Init and test redis connection
         self._redis = StrictRedis.from_url(url=redis, charset="utf-8", decode_responses=False)
 
-        self._logger.info("Try to connect to Redis...")
+        _LOGGER.info("Try to connect to Redis...")
         try:
             self._redis.ping()
         except exceptions.ConnectionError:
-            self._logger.critical("Unable to connect to Redis")
+            _LOGGER.critical("Unable to connect to Redis")
             sys.exit()
-        self._logger.info("Successfully connected to Redis")
+        _LOGGER.info("Successfully connected to Redis")
 
         # Save superadmin
         self._superadmin = int(superadmin) if superadmin is not None else None
@@ -128,7 +127,7 @@ class PoGORaidBot:
         if self._debug_folder is not None:
             self._debug_folder = os.path.abspath(debug_folder)
             ScreenshotRaid.debug = True
-            self._logger.info("\"{}\" was set as debug folder".format(self._debug_folder))
+            _LOGGER.info("\"{}\" was set as debug folder".format(self._debug_folder))
 
         # Init the bot
         self._bot = Bot(token)
@@ -189,10 +188,10 @@ class PoGORaidBot:
         # Starts the scheduler
         self._scheduler.start()
 
-        self._logger.info("Bot ready")
+        _LOGGER.info("Bot ready")
 
     def listen(self) -> None:
-        self._logger.info("Start listening")
+        _LOGGER.info("Start listening")
 
         # Begin to listen
         self._updater.start_polling()
@@ -200,7 +199,7 @@ class PoGORaidBot:
         self._updater.idle()
 
     def _handler_error(self, update: Update, context: CallbackContext) -> None:
-        self._logger.warning('Update "{}" caused error "{}"'.format(update, context.error))
+        _LOGGER.warning('Update "{}" caused error "{}"'.format(update, context.error))
 
     @Decorator.ChatMustBeEnabled
     def _handler_event_pinned(self, update: Update, _: CallbackContext) -> bool:
@@ -215,12 +214,12 @@ class PoGORaidBot:
 
     @Decorator.ChatMustBeEnabled
     def _handler_screenshot(self, update: Update, _: CallbackContext) -> bool:
-        self._logger.info("New image is arrived from {} by {}"
+        _LOGGER.info("New image is arrived from {} by {}"
                           .format(update.effective_chat.title, update.effective_user.username))
 
         # Check if scan is disabled for this group
         if self._redis.exists(update.effective_chat.id):
-            self._logger.info("Screenshots scan for chat {} is disabled".format(update.effective_chat.id))
+            _LOGGER.info("Screenshots scan for chat {} is disabled".format(update.effective_chat.id))
             return False
 
         # Scan the screenshot
@@ -240,17 +239,17 @@ class PoGORaidBot:
             raid = pickle.loads(self._redis.get(redis_keys.RAID.format(code)))
         except Exception:  # TODO: improve except
             traceback.print_exc()
-            self._logger.warning("A invalid to bot message reply was come")
+            _LOGGER.warning("A invalid to bot message reply was come")
             return False
 
-        self._logger.info("A reply to bot message was come")
+        _LOGGER.info("A reply to bot message was come")
 
         # Find the new hangout
         result = re.search(r"([0-2]?[0-9])[:.,]([0-5]?[0-9])", update.message.text)
         # Set new hangout
         raid.hangout = datetime.time(int(result.group(1)), int(result.group(2)))
 
-        self._logger.debug(raid)
+        _LOGGER.debug(raid)
 
         # Save the raid in the db
         self._redis.setex(redis_keys.RAID.format(raid.code), 60 * 60 * 6, pickle.dumps(raid))
@@ -273,10 +272,10 @@ class PoGORaidBot:
             # Get operation
             op = result.group(2)
         except Exception:  # TODO: improve except
-            self._logger.warning("A invalid callback query was come")
+            _LOGGER.warning("A invalid callback query was come")
             return False
 
-        self._logger.info("A callback query was come")
+        _LOGGER.info("A callback query was come")
 
         # Edit list of participants
         if op == "a":
@@ -290,7 +289,7 @@ class PoGORaidBot:
         else:
             return False
 
-        self._logger.debug(raid)
+        _LOGGER.debug(raid)
 
         # Save the raid in the db
         self._redis.setex(redis_keys.RAID.format(raid.code), 60 * 60 * 6, pickle.dumps(raid))
@@ -312,14 +311,14 @@ class PoGORaidBot:
             # Try to retrieve the raid information
             raid = pickle.loads(self._redis.get(redis_keys.RAID.format(code)))
         except Exception:  # TODO: improve except
-            self._logger.warning("A invalid to bot message reply was come")
+            _LOGGER.warning("A invalid to bot message reply was come")
             return False
 
-        self._logger.info("A request to change boss was come from {}({}) by {}({})"
+        _LOGGER.info("A request to change boss was come from {}({}) by {}({})"
                           .format(update.effective_chat.title, update.effective_chat.id,
                                   update.effective_user.username, update.effective_user.id))
 
-        self._logger.info("The user suggested \"{}\"".format(update.message.text.strip()))
+        _LOGGER.info("The user suggested \"{}\"".format(update.message.text.strip()))
 
         # Get the suggested boss name
         name = update.message.text.strip()
@@ -330,10 +329,10 @@ class PoGORaidBot:
         # If the boss wasn't found reply with an error
         if b is None:
             update.message.reply_markdown("Sorry, but i don't know *{}*".format(name))
-            self._logger.info("A valid boss wasn't found")
+            _LOGGER.info("A valid boss wasn't found")
             return False
 
-        self._logger.info("\"{}\" was found".format(b.name))
+        _LOGGER.info("\"{}\" was found".format(b.name))
 
         # Set the new boss
         raid.boss = b
@@ -341,7 +340,7 @@ class PoGORaidBot:
         # Save the raid in the db
         self._redis.setex(redis_keys.RAID.format(raid.code), 60 * 60 * 6, pickle.dumps(raid))
 
-        self._logger.debug(raid)
+        _LOGGER.debug(raid)
 
         # Try to delete user message
         self._try_to_delete(update.message)
@@ -357,7 +356,7 @@ class PoGORaidBot:
         # Add current chat to the db of disabled scan
         self._redis.sadd(redis_keys.DISABLEDSCAN, update.message.chat.id)
 
-        self._logger.info("Disable scan for chat {}".format(update.message.chat.id))
+        _LOGGER.info("Disable scan for chat {}".format(update.message.chat.id))
         update.message.chat.send_message("The scan now is disabled")
 
         return True
@@ -368,19 +367,19 @@ class PoGORaidBot:
         # Remove current chat from the db of disabled scan
         self._redis.srem(redis_keys.DISABLEDSCAN, update.message.chat.id)
 
-        self._logger.info("Enable scan for chat {}".format(update.message.chat.id))
+        _LOGGER.info("Enable scan for chat {}".format(update.message.chat.id))
         update.message.chat.send_message("The scan now is enabled")
 
         return True
 
     @Decorator.ChatMustBeEnabled
     def _handler_command_scan(self, update: Update, _: CallbackContext) -> bool:
-        self._logger.info("Required scan from {} by {}".format(update.message.chat.id, update.message.from_user.id))
+        _LOGGER.info("Required scan from {} by {}".format(update.message.chat.id, update.message.from_user.id))
 
         # Check if it is a reply to screenshot
         if update.message.reply_to_message is None or len(update.message.reply_to_message.photo) == 0:
             update.message.reply_text("It must be a reply to a screenshot")
-            self._logger.info("Invalid scan command")
+            _LOGGER.info("Invalid scan command")
             return False
 
         # Try to delete user command
@@ -397,12 +396,12 @@ class PoGORaidBot:
 
     @Decorator.UserMustBeBotAdmin
     def _handler_command_addadmin(self, update: Update, _: CallbackContext) -> bool:
-        self._logger.info("User {} try to add {} as bot admin".format(update.message.from_user.id,
+        _LOGGER.info("User {} try to add {} as bot admin".format(update.message.from_user.id,
                                                                       update.message.reply_to_message.from_user.id))
 
         # Check if the cited user is already a bot admin
         if self._redis.sismember(redis_keys.ADMIN, update.message.reply_to_message.from_user.id):
-            self._logger.info("User {} is already a bot admin".format(update.message.reply_to_message.from_user.id))
+            _LOGGER.info("User {} is already a bot admin".format(update.message.reply_to_message.from_user.id))
             update.message.reply_markdown("[{}](tg://user?id={}) is already a bot admin"
                                           .format(update.message.reply_to_message.from_user.username,
                                                   update.message.reply_to_message.from_user.id))
@@ -410,7 +409,7 @@ class PoGORaidBot:
 
         # Add cited user as bot admin
         self._redis.sadd(redis_keys.ADMIN, update.message.reply_to_message.from_user.id)
-        self._logger.info("User {} is now a bot admin".format(update.message.reply_to_message.from_user.id))
+        _LOGGER.info("User {} is now a bot admin".format(update.message.reply_to_message.from_user.id))
         update.message.reply_markdown("[{}](tg://user?id={}) is now a bot admin"
                                       .format(update.message.reply_to_message.from_user.username,
                                               update.message.reply_to_message.from_user.id))
@@ -419,12 +418,12 @@ class PoGORaidBot:
 
     @Decorator.UserMustBeBotAdmin
     def _handler_command_removeadmin(self, update: Update, _: CallbackContext) -> bool:
-        self._logger.info("User {} try to remove {} as bot admin".format(update.message.from_user.id,
+        _LOGGER.info("User {} try to remove {} as bot admin".format(update.message.from_user.id,
                                                                          update.message.reply_to_message.from_user.id))
 
         # Check if the mentioned user is the superadmin
         if self._redis.get(redis_keys.SUPERADMIN) == update.message.reply_to_message.from_user.id:
-            self._logger.info("User {} is the superadmin".format(update.message.reply_to_message.from_user.id))
+            _LOGGER.info("User {} is the superadmin".format(update.message.reply_to_message.from_user.id))
             update.message.reply_markdown("[{}](tg://user?id={}) is the superadmin and it cannot be removed"
                                           .format(update.message.reply_to_message.from_user.username,
                                                   update.message.reply_to_message.from_user.id))
@@ -432,7 +431,7 @@ class PoGORaidBot:
 
         # Check if the cited user is not a bot admin
         if not self._redis.sismember(redis_keys.ADMIN, update.message.reply_to_message.from_user.id):
-            self._logger.info("User {} is not a bot admin".format(update.message.reply_to_message.from_user.id))
+            _LOGGER.info("User {} is not a bot admin".format(update.message.reply_to_message.from_user.id))
             update.message.reply_markdown("[{}](tg://user?id={}) is not a bot admin"
                                           .format(update.message.reply_to_message.from_user.username,
                                                   update.message.reply_to_message.from_user.id))
@@ -440,7 +439,7 @@ class PoGORaidBot:
 
         # Remove cited user as bot admin
         self._redis.srem(redis_keys.ADMIN, update.message.reply_to_message.from_user.id)
-        self._logger.info("User {} is no longer a bot admin".format(update.message.reply_to_message.from_user.id))
+        _LOGGER.info("User {} is no longer a bot admin".format(update.message.reply_to_message.from_user.id))
         update.message.reply_markdown("[{}](tg://user?id={}) is no longer a bot admin"
                                       .format(update.message.reply_to_message.from_user.username,
                                               update.message.reply_to_message.from_user.id))
@@ -449,36 +448,36 @@ class PoGORaidBot:
 
     @Decorator.UserMustBeBotAdmin
     def _handler_command_enablechat(self, update: Update, _: CallbackContext) -> bool:
-        self._logger.info("Bot admin {} try to enable the chat {}".format(update.message.from_user.id,
+        _LOGGER.info("Bot admin {} try to enable the chat {}".format(update.message.from_user.id,
                                                                           update.message.chat.id))
 
         # Check if this chat is already enabled
         if self._redis.sismember(redis_keys.ENABLEDCHAT, update.message.chat.id):
-            self._logger.info("Chat {} is already enabled".format(update.message.chat.id))
+            _LOGGER.info("Chat {} is already enabled".format(update.message.chat.id))
             update.message.reply_markdown("This chat is already enabled")
             return False
 
         # Add this chat to the enabled
         self._redis.sadd(redis_keys.ENABLEDCHAT, update.message.chat.id)
-        self._logger.info("Chat {} is now enabled".format(update.message.chat.id))
+        _LOGGER.info("Chat {} is now enabled".format(update.message.chat.id))
         update.message.reply_markdown("This chat is now enabled")
 
         return True
 
     @Decorator.UserMustBeBotAdmin
     def _handler_command_disablechat(self, update: Update, _: CallbackContext) -> bool:
-        self._logger.info("Bot admin {} try to disable the chat {}".format(update.message.from_user.id,
+        _LOGGER.info("Bot admin {} try to disable the chat {}".format(update.message.from_user.id,
                                                                            update.message.chat.id))
 
         # Check if this chat is not enabled
         if not self._redis.sismember(redis_keys.ENABLEDCHAT, update.message.chat.id):
-            self._logger.info("Chat {} is not enabled".format(update.message.chat.id))
+            _LOGGER.info("Chat {} is not enabled".format(update.message.chat.id))
             update.message.reply_markdown("This chat is not enabled")
             return False
 
         # Remove this chat to the enabled
         self._redis.srem(redis_keys.ENABLEDCHAT, update.message.chat.id)
-        self._logger.info("Chat {} is no longer enabled".format(update.message.chat.id))
+        _LOGGER.info("Chat {} is no longer enabled".format(update.message.chat.id))
         update.message.reply_markdown("This chat is no longer enabled")
 
         return True
@@ -494,7 +493,7 @@ class PoGORaidBot:
         if not screen.is_raid:
             return
 
-        self._logger.info("It's a valid screen of a raid")
+        _LOGGER.info("It's a valid screen of a raid")
 
         # Get the raid dataclass
         raid = screen.to_raid()
@@ -519,10 +518,10 @@ class PoGORaidBot:
                     res = cv2.imwrite(os.path.join(self._debug_folder, "{}-{}.png".format(raid.code, s)),
                                       screen._image_sections[s]) and res
                 if not res:
-                    self._logger.warning("Something was gone wrong during save sections of image")
+                    _LOGGER.warning("Something was gone wrong during save sections of image")
 
             except PermissionError:
-                self._logger.warning("Unable to create debug folder")
+                _LOGGER.warning("Unable to create debug folder")
 
     def _post_raid(self, raid: Raid, message: Message) -> None:
         options = {
@@ -570,7 +569,7 @@ class PoGORaidBot:
         try:
             self._bot.delete_message(message.chat.id, message.message_id)
         except error.BadRequest:
-            self._logger.info("The bot hasn't the permission to delete messages")
+            _LOGGER.info("The bot hasn't the permission to delete messages")
 
     def _init_db(self):
         pass

@@ -9,17 +9,17 @@ import cv2
 import numpy as np
 import pytesseract
 
+from . import resources
 from ..cachedmethod import CachedMethod
 from ..data import Boss, Gym, gyms, bosses
 from ..exceptions import HatchingTimerNotFound, HatchingTimerUnreadable, RaidTimerNotFound, RaidTimerUnreadable, \
     ExTagNotFound, ExTagUnreadable, LevelNotFound, TimeNotFound, HatchingTimerException, RaidTimerException, \
     GymNotFound, ExTagException, BossNotFound, BossesListNotAvailable
 from ..raid import Raid
-from . import resources
 
 Rect = Tuple[Tuple[int, int], Tuple[int, int]]
 
-logger = logging.getLogger(__name__)
+_LOGGER = logging.getLogger(__package__)
 
 
 class ScreenshotRaid:
@@ -96,18 +96,18 @@ class ScreenshotRaid:
 
         text = pytesseract.image_to_string(img, config=('--oem 1 --psm 3'))
 
-        logger.debug("raw hatching_timer «{}»".format(text))
+        _LOGGER.debug("raw hatching_timer «{}»".format(text))
 
         result = re.search(r"([0-3])[:.]([0-5][0-9])[:.]([0-5][0-9])", text)
 
         try:
-            logger.debug("hatching_timer {}:{}:{}".format(result.group(1), result.group(2), result.group(3)))
+            _LOGGER.debug("hatching_timer {}:{}:{}".format(result.group(1), result.group(2), result.group(3)))
             return datetime.timedelta(hours=int(result.group(1)), minutes=int(result.group(2)),
                                       seconds=int(result.group(3)))
         except Exception:
             pass
 
-        logger.debug("hatching timer unreadable")
+        _LOGGER.debug("hatching timer unreadable")
         raise HatchingTimerUnreadable
 
     def _find_hatching_timer(self) -> Rect:
@@ -135,7 +135,7 @@ class ScreenshotRaid:
         except:
             pass
 
-        logger.debug("hatching timer not found")
+        _LOGGER.debug("hatching timer not found")
         raise HatchingTimerNotFound
 
     def _read_raid_timer(self) -> datetime.timedelta:
@@ -150,18 +150,18 @@ class ScreenshotRaid:
 
         text = pytesseract.image_to_string(img, config=('--oem 1 --psm 3'))
 
-        logger.debug("raw raid_timer «{}»".format(text))
+        _LOGGER.debug("raw raid_timer «{}»".format(text))
 
         result = re.search(r"([0-3])[:.]([0-5][0-9])[:.]([0-5][0-9])", text)
 
         try:
-            logger.debug("raid_timer {}:{}:{}".format(result.group(1), result.group(2), result.group(3)))
+            _LOGGER.debug("raid_timer {}:{}:{}".format(result.group(1), result.group(2), result.group(3)))
             return datetime.timedelta(hours=int(result.group(1)), minutes=int(result.group(2)),
                                       seconds=int(result.group(3)))
         except Exception:
             pass
 
-        logger.debug("raid timer unreadable")
+        _LOGGER.debug("raid timer unreadable")
         raise RaidTimerUnreadable
 
     def _find_raid_timer(self) -> Rect:
@@ -189,7 +189,7 @@ class ScreenshotRaid:
         except:
             pass
 
-        logger.debug("raid timer not found")
+        _LOGGER.debug("raid timer not found")
         raise RaidTimerNotFound
 
     def _find_gym(self) -> Gym:
@@ -206,7 +206,7 @@ class ScreenshotRaid:
         __, img = cv2.threshold(img, 220, 255, cv2.THRESH_BINARY_INV)
         text = pytesseract.image_to_string(img, config=('--oem 1 --psm 3'))
 
-        logger.debug("raw gym_name «{}»".format(text))
+        _LOGGER.debug("raw gym_name «{}»".format(text))
 
         text = text.rstrip().replace('\n', ' ')
         text = " ".join(text.split())
@@ -250,7 +250,7 @@ class ScreenshotRaid:
         # Find the text in the subset
         text = pytesseract.image_to_string(img, config=('--oem 1 --psm 3'))
 
-        logger.debug("raw boss «{}»".format(text))
+        _LOGGER.debug("raw boss «{}»".format(text))
 
         # Removed new line from the text
         text = text.rstrip().replace('\n', ' ')
@@ -316,7 +316,7 @@ class ScreenshotRaid:
         # Read the sub image
         text = pytesseract.image_to_string(img, config=('--oem 1 --psm 3'))
 
-        logger.debug("raw ex_tag «{}»".format(text))
+        _LOGGER.debug("raw ex_tag «{}»".format(text))
 
         # If it is enough similar to ex label the gym will be considered ex
         if max([SequenceMatcher(None, "ex raid", text.lower()).ratio(),

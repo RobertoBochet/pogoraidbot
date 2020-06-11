@@ -10,7 +10,7 @@ import requests
 
 from .exceptions import InvalidJSON, InvalidCSV
 
-_logger = logging.getLogger(__name__)
+_LOGGER = logging.getLogger(__package__)
 
 
 @dataclass
@@ -28,7 +28,7 @@ class DataList(List):
         return self._is_loaded
 
     def load_from(self, file: str) -> bool:
-        self._logger.info("Try to load {}".format(self.__class__.__name__))
+        _LOGGER.info("Try to load {}".format(self.__class__.__name__))
 
         try:
             # Check if the resource is remote
@@ -42,10 +42,10 @@ class DataList(List):
                     raw = f.read()
 
         except FileNotFoundError:
-            self._logger.warning("Failed to load the list: file not found")
+            _LOGGER.warning("Failed to load the list: file not found")
             return False
         except requests.exceptions.ConnectionError:
-            self._logger.warning("Failed to load the list: an HTTP error occurred")
+            _LOGGER.warning("Failed to load the list: an HTTP error occurred")
             return False
 
         try:
@@ -61,12 +61,12 @@ class DataList(List):
             pass
 
         if not self.is_loaded:
-            self._logger.warning("The file is in a wrong format")
+            _LOGGER.warning("The file is in a wrong format")
             return False
 
-        self._logger.debug(self)
+        _LOGGER.debug(self)
 
-        self._logger.info("{} is loaded with {} entities".format(self.__class__.__name__, len(self)))
+        _LOGGER.info("{} is loaded with {} entities".format(self.__class__.__name__, len(self)))
 
         return True
 
@@ -74,7 +74,7 @@ class DataList(List):
         if not self.is_loaded:
             return None
 
-        self._logger.debug("Try to find a candidate for '{}'".format(name))
+        _LOGGER.debug("Try to find a candidate for '{}'".format(name))
         # Compare the boss_name with each boss in the list and find the most similar
 
         values = map(lambda x: (x, SequenceMatcher(None, name.lower(), x.name.lower()).ratio()), self)
@@ -82,10 +82,10 @@ class DataList(List):
         value = max(values, key=lambda x: x[1])
 
         if value[1] >= minimal_value:
-            self._logger.debug("Found '{}' with confidence {:.3f}".format(value[0].name, value[1]))
+            _LOGGER.debug("Found '{}' with confidence {:.3f}".format(value[0].name, value[1]))
             return value[0]
         else:
-            self._logger.debug("No candidate found")
+            _LOGGER.debug("No candidate found")
             return None
 
     def _load_json(self, raw):
@@ -93,7 +93,3 @@ class DataList(List):
 
     def _load_csv(self, raw):
         raise NotImplementedError
-
-    @property
-    def _logger(self):
-        return _logger

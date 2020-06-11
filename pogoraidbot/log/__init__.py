@@ -1,18 +1,16 @@
 import logging
+import pkgutil
 from typing import Union
 
-PACKAGE_LOGGERS = [
-    "pogoraidbot.bot",
-    "pogoraidbot.screenshot",
-    "pogoraidbot.data.data",
-    "pogoraidbot.data.gym",
-    "pogoraidbot.data.boss"
-]
+import pogoraidbot
 
 
 def logger_setup(log_level: Union[int, str] = logging.ERROR, modules_log_level: int = logging.ERROR):
-    # Set format for the log
+    # sets format for the log
     logging.basicConfig(format="%(levelname)s|%(name)s|%(message)s", level=modules_log_level)
 
-    for l in PACKAGE_LOGGERS:
-        logging.getLogger(l).setLevel(log_level)
+    # sets log level for local packages
+    for _, modname, _ in pkgutil.walk_packages(path=pogoraidbot.__path__,
+                                               prefix=pogoraidbot.__name__ + ".",
+                                               onerror=lambda x: None):
+        logging.getLogger(modname).setLevel(log_level)
