@@ -42,7 +42,7 @@ class PoGORaidBot:
 
                 # Check if this chat is enabled
                 if not inst._redis.sismember(redis_keys.ENABLEDCHAT, chat_id):
-                    inst._logger.info("Chat {} is not enabled".format(chat_id))
+                    _LOGGER.info("Chat {} is not enabled".format(chat_id))
 
                     return False
 
@@ -71,7 +71,7 @@ class PoGORaidBot:
 
                 # Check if the sender is an admin
                 if not is_admin:
-                    inst._logger.info("User {} is not admin".format(update.message.from_user.id))
+                    _LOGGER.info("User {} is not admin".format(update.message.from_user.id))
 
                     return False
 
@@ -88,7 +88,7 @@ class PoGORaidBot:
             def __call__(self, inst: PoGORaidBot, update: Update, context: CallbackContext) -> bool:
                 # Check if the user is a bot admin
                 if not inst._redis.sismember(redis_keys.ADMIN, update.message.from_user.id):
-                    inst._logger.warning("User {} is not a bot admin".format(update.message.from_user.id))
+                    _LOGGER.warning("User {} is not a bot admin".format(update.message.from_user.id))
 
                     return False
 
