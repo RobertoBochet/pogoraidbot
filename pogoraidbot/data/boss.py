@@ -66,36 +66,37 @@ class BossesList(DataList):
 
     def _load_csv(self, raw: str) -> None:
 
-        rows = csv.reader(StringIO(raw))
+        rows = csv.reader(StringIO(raw), skipinitialspace=True)
 
+        # skips the header row and counts the columns
         c = len(next(rows))
 
         if c == 1:
             for row in rows:
-                self.append(Boss(row[0]))
+                self.append(Boss(row[0].strip()))
             return
 
         elif c == 2:
             for row in rows:
                 try:
-                    if int(row[1]) < 0 or int(row[1]) > 5:
+                    if int(row[1].strip()) < 0 or int(row[1].strip()) > 5:
                         raise InvalidCSV
                 except:
                     raise InvalidCSV
 
-                self.append(Boss(row[0], int(row[1])))
+                self.append(Boss(row[0].strip(), int(row[1].strip())))
             return
 
         elif c == 3:
             for row in rows:
                 try:
-                    if int(row[1]) < 0 or int(row[1]) > 5:
+                    if int(row[1].strip()) < 0 or int(row[1].strip()) > 5:
                         raise InvalidCSV
-                    str2bool(row[2])
+                    str2bool(row[2].strip())
                 except:
                     raise InvalidCSV
 
-                self.append(Boss(row[0], int(row[1]), str2bool(row[2])))
+                self.append(Boss(row[0].strip(), int(row[1].strip()), str2bool(row[2].strip())))
             return
 
         raise InvalidCSV
