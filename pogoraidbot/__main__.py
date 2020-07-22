@@ -8,7 +8,7 @@ from .log import logger_setup
 
 if __name__ == "__main__":
     # Gets inline arguments
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(prog="pogoraidbot")
 
     parser.add_argument("-t", "--token", dest="token", help="telegram bot token")
     parser.add_argument("-r", "--redis", dest="redis", help="redis url in \"redis://{host}[:port]/{db}\" format")
