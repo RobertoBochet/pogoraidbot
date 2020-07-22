@@ -6,9 +6,9 @@ name: Upload Python Package
 on:
   push:
     tags:
-      - v*
-      - v*.*
-      - v*.*.*
+      - '?[0-9]+.'
+      - '?[0-9]+.[0-9]+'
+      - '?[0-9]+.[0-9]+.[0-9]+'
 
 jobs:
   deploy:
@@ -27,7 +27,9 @@ jobs:
         pip install setuptools wheel twine
     - name: Set the version
       run: |
-        echo "__version__ = '${GITHUB_REF/refs\/tags\/v/}'" > ./pogoraidbot/version.py
+        VERSION="${GITHUB_REF/refs\/tags\//}"
+        VERSION="${VERSION/v/}"
+        echo "__version__ = '${VERSION}'" > ./pogoraidbot/version.py
     - name: Build and publish
       env:
         TWINE_USERNAME: __token__
