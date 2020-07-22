@@ -1,3 +1,13 @@
+FROM python:3.7-slim as compiler
+
+WORKDIR /srv
+
+COPY setup.py ./
+COPY README.md ./
+COPY pogoraidbot ./pogoraidbot
+
+RUN python3 setup.py sdist bdist_wheel
+
 FROM python:3.7-slim
 
 RUN apt-get update
@@ -10,10 +20,8 @@ RUN rm -rf /var/lib/apt/lists/*
 
 VOLUME /srv
 
-COPY ./pogoraidbot/requirements.txt /pogoraidbot/
+COPY --from=compiler /srv/dist/*.whl /
 
-RUN pip3 install -r /pogoraidbot/requirements.txt
-
-COPY ./pogoraidbot/ /pogoraidbot
+RUN pip3 install *.whl
 
 ENTRYPOINT python3 -m pogoraidbot -e
