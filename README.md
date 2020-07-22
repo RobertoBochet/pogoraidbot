@@ -1,4 +1,9 @@
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/ffb75961a5854f7d9d429921ea71084b)](https://www.codacy.com/app/RobertoBochet/pogoraidbot?utm_source=github.com&utm_medium=referral&utm_content=RobertoBochet/pogoraidbot&utm_campaign=Badge_Grade)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/dcfaeb382e18477491720692ea2f818f)](https://www.codacy.com/manual/RobertoBochet/pogoraidbot?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=RobertoBochet/pogoraidbot&amp;utm_campaign=Badge_Grade)
+[![GitHub](https://img.shields.io/github/license/robertobochet/pogoraidbot?color=blue)](https://github.com/RobertoBochet/pogoraidbot/blob/master/LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/pogoraidbot?color=yellow)](https://pypi.org/project/pogoraidbot/)
+[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/robertobochet/pogoraidbot/Upload%20Python%20Package?label=pypi%20build)](https://pypi.org/project/pogoraidbot/)
+[![Docker Image Version (latest semver)](https://img.shields.io/docker/v/robertobochet/pogoraidbot?color=blue&label=docker%20version&sort=semver)](https://hub.docker.com/r/robertobochet/pogoraidbot)
+[![Docker Cloud Build Status](https://img.shields.io/docker/cloud/build/robertobochet/pogoraidbot)](https://hub.docker.com/r/robertobochet/pogoraidbot)
 
 ## Important
 
@@ -14,12 +19,12 @@ If you publish a raid screenshot in a group where this bot is present, it identi
 
 ### Python
 
-The bot needs Python version 3.7 or newer, and the modules that are present in the `requirements.txt` file.
+The bot needs Python version 3.7 or newer.
 
-To install the modules use pip:
+You can install `pogoraidbot` from `pypi`:
 
 ```bash
-$ pip install -r requirements.txt
+$ pip install pogoraidbot
 ```
 
 ### Tesseract
@@ -38,31 +43,35 @@ Refer to this [link](https://redis.io/).
 
 The bot needs to know, the bot api token, that you can obtain from [@BotFather](https://telegram.me/BotFather) and the address of redis instance.
 
-To understand how to provide these informations to the bot:
+To understand how to provide these information to the bot:
 
 ```bash
-$ python ./main.py -h
+$ python3 -m pogoraidbot
 ```
 
 ```bash
-usage: main.py [-h] [-t TOKEN] [-r HOST] [-p PORT] [-a SUPERADMIN]
-               [-b BOSSES_FILE] [-g GYMS_FILE] [-d DEBUG_FOLDER] [-v] [--info]
-               [--debug]
+usage: pogoraidbot [-h] [-t TOKEN] [-r REDIS] [-a SUPERADMIN] [-b BOSSES_FILE] [-o BOSSES_EXPIRATION]
+                   [-g GYMS_FILE] [-y GYMS_EXPIRATION] [-e] [-d DEBUG_FOLDER] [-v] [--info] [--debug]
 
 optional arguments:
   -h, --help            show this help message and exit
   -t TOKEN, --token TOKEN
                         telegram bot token
-  -r HOST, --host HOST  redis host
-  -p PORT, --port PORT  redis port
+  -r REDIS, --redis REDIS
+                        redis url in "redis://{host}[:port]/{db}" format
   -a SUPERADMIN, --superadmin SUPERADMIN
                         superadmin's id
   -b BOSSES_FILE, --bosses-file BOSSES_FILE
-                        JSON file contains possible pokémons in the raids. It
-                        can be also provided over http(s)
+                        JSON or CSV file contains possible pokémons in the raids. It can be also
+                        provided over http(s)
+  -o BOSSES_EXPIRATION, --bosses-expiration BOSSES_EXPIRATION
+                        Validity of the bosses list in hours
   -g GYMS_FILE, --gyms-file GYMS_FILE
-                        JSON file contains gyms and their coordinates. It can
-                        be also provided over http(s)
+                        JSON file contains gyms and their coordinates. It can be also provided over
+                        http(s)
+  -y GYMS_EXPIRATION, --gyms-expiration GYMS_EXPIRATION
+                        Validity of the gyms list in hours
+  -e, --env             Use environment variables for the configuration
   -d DEBUG_FOLDER, --debug-folder DEBUG_FOLDER
                         debug folder
   -v                    number of -v specifics level of verbosity
@@ -73,7 +82,7 @@ optional arguments:
 An example:
 
 ```bash
-$ python3 ./main.py -t [BOT_TOKEN] -r 127.0.0.1 -p 6379
+$ python3 -m pogoraidbot -t [BOT_TOKEN] -r 127.0.0.1 -p 6379
 ```
 
 ## Dockerized version \[recommended]
