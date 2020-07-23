@@ -15,6 +15,14 @@ class Gym(Data):
     latitude: float = None
     longitude: float = None
 
+    @property
+    def map(self):
+        if self.latitude is None or self.longitude is None:
+            return None
+
+        return "https://maps.google.com/maps?q={latitude},{longitude}&ll={latitude},{longitude}&z=17".format(
+            **self.__dict__)
+
 
 class GymsList(DataList):
     def _load_json(self, raw: str) -> None:

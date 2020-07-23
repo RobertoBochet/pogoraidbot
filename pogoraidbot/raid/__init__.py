@@ -8,8 +8,8 @@ from enum import Enum
 from functools import reduce
 from typing import Dict
 
-from jinja2 import Template
 from telegram import User
+from telegram.utils import helpers
 
 from ..data import Boss, Gym
 
@@ -95,50 +95,61 @@ class Raid:
         return self.level
 
     def to_msg(self) -> str:
-        TEMPLATE = Template(
-            "{% if raid.is_ex %}*EX*{% endif %}"
-            "{% if raid.gym.latitude is not none and raid.gym.longitude is not none %}"
-                "[{{ raid.gym.name|wordwrap(25) }}](http://maps.google.com/maps?"
-                "q={{ raid.gym.latitude }},{{ raid.gym.longitude }}"
-                "&ll={{ raid.gym.latitude }},{{ raid.gym.longitude }}"
-                "&z=17)\n"
-            "{% else %}"
-                "{{ raid.gym.name|wordwrap(25) }}\n"
-            "{% endif %}"
-            "\n"
-            "{% if raid.boss is not none %}"
-                "{% if raid.boss.is_there_shiny %}"
-                    "\U00002728*{{ raid.boss.name }}*\U00002728\n"
-                "{% else %}"
-                    "*{{ raid.boss.name }}*\n"
-                "{% endif %}"
-            "{% endif %}"
-            "{% if raid.effective_level is not none %}"
-                "{% for i in range(0, raid.effective_level) %}\U00002B50{% endfor %}\n"
-            "{% endif %}"
-            "\n"
-            "{% if raid.hatching is not none %}"
-                "`Hatching:   {% if raid.is_aprx_time %}~{% endif %}{{ raid.hatching.strftime('%H:%M') }}`\n"
-            "{% endif %}"
-            "{% if raid.end is not none %}"
-                "`End:        {% if raid.is_aprx_time %}~{% endif %}{{ raid.end.strftime('%H:%M') }}`\n"
-            "{% endif %}"
-            "{% if raid.hangout is not none %}"
-                "`Hangout:    {% if raid.is_aprx_time %} {% endif %}{{ raid.hangout.strftime('%H:%M') }}`\n"
-            "{% endif %}"
-            "{% if raid.participants|count > 0 %}"
-                "`─────────────────────`\n"
-                "{% for id, p in raid.participants.items() %}"
-                    "[{{ p.name }}](tg://user?id={{ id }})"
-                    "{% if p.is_remote %}\U0001F3E1{% endif %}"
-                    "{% if p.is_flyer %}\U00002708{% endif %}"
-                    "{% if p.number > 1 %} +{{ p.number - 1 }} {% endif %}"
-                    "\n"
-                "{% endfor %}"
-                "`─────────────────────`\n"
-                "*{{ raid.participants_count }}* participants\n"
-            "{% endif %}"
-            "`[{{ raid.code }}]`"
-        )
+        msg = ""
 
-        return TEMPLATE.render(raid=self)
+        if self.is_ex:
+            msg += "*EX*"
+
+        if self.gym.latitude is not None and self.gym.longitude is not None:
+            msg += "[{}]({})".format(
+                helpers.escape_markdown(self.gym.name, version=2),
+                helpers.escape_markdown(self.gym.map, version=2))
+        else:
+            msg += "{}".format(helpers.escape_markdown(self.gym.name, version=2))
+
+        msg += "\n\n"
+
+        if self.boss is not None:
+            if self.boss.is_there_shiny:
+                msg += "\U00002728*{}*\U00002728".format(self.boss.name)
+            else:
+                msg += "{}".format(self.boss.name)
+            msg += "\n"
+
+        if self.effective_level is not None:
+            msg += "\U00002B50" * self.effective_level
+            msg += "\n"
+
+        msg += "\n"
+
+        if self.hatching is not None:
+            msg += "`Hatching:   {}{}`\n".format("~" if self.is_aprx_time else " ", self.hatching.strftime('%H:%M'))
+
+        if self.end is not None:
+            msg += "`Ends:       {}{}`\n".format("~" if self.is_aprx_time else " ", self.end.strftime('%H:%M'))
+
+        if self.hangout is not None:
+            msg += "`Hangout:     {}`\n".format(self.hangout.strftime('%H:%M'))
+
+        if self.participants_count > 0:
+            msg += "`─────────────────────`\n"
+
+            for p_id, p in self.participants.items():
+                msg += helpers.mention_markdown(p_id, p.name, version=2)
+
+                if p.is_remote:
+                    msg += "\U0001F3E1"
+                if p.is_flyer:
+                    msg += "\U00002708"
+
+                if p.number > 1:
+                    msg += " \\+{}".format(p.number - 1)
+
+                msg += "\n"
+
+            msg += "`─────────────────────`\n"
+            msg += "*{}* participants\n".format(self.participants_count)
+
+        msg += "`[{}]`".format(self.code)
+
+        return msg

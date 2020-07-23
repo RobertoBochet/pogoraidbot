@@ -24,6 +24,7 @@ from ..screenshot import ScreenshotRaid
 
 _LOGGER = logging.getLogger(__package__)
 
+
 class PoGORaidBot:
     class Decorator:
         class ChatMustBeEnabled:
@@ -215,7 +216,7 @@ class PoGORaidBot:
     @Decorator.ChatMustBeEnabled
     def _handler_screenshot(self, update: Update, _: CallbackContext) -> bool:
         _LOGGER.info("New image is arrived from {} by {}"
-                          .format(update.effective_chat.title, update.effective_user.username))
+                     .format(update.effective_chat.title, update.effective_user.username))
 
         # Check if scan is disabled for this group
         if self._redis.exists(update.effective_chat.id):
@@ -315,8 +316,8 @@ class PoGORaidBot:
             return False
 
         _LOGGER.info("A request to change boss was come from {}({}) by {}({})"
-                          .format(update.effective_chat.title, update.effective_chat.id,
-                                  update.effective_user.username, update.effective_user.id))
+                     .format(update.effective_chat.title, update.effective_chat.id,
+                             update.effective_user.username, update.effective_user.id))
 
         _LOGGER.info("The user suggested \"{}\"".format(update.message.text.strip()))
 
@@ -397,7 +398,7 @@ class PoGORaidBot:
     @Decorator.UserMustBeBotAdmin
     def _handler_command_addadmin(self, update: Update, _: CallbackContext) -> bool:
         _LOGGER.info("User {} try to add {} as bot admin".format(update.message.from_user.id,
-                                                                      update.message.reply_to_message.from_user.id))
+                                                                 update.message.reply_to_message.from_user.id))
 
         # Check if the cited user is already a bot admin
         if self._redis.sismember(redis_keys.ADMIN, update.message.reply_to_message.from_user.id):
@@ -419,7 +420,7 @@ class PoGORaidBot:
     @Decorator.UserMustBeBotAdmin
     def _handler_command_removeadmin(self, update: Update, _: CallbackContext) -> bool:
         _LOGGER.info("User {} try to remove {} as bot admin".format(update.message.from_user.id,
-                                                                         update.message.reply_to_message.from_user.id))
+                                                                    update.message.reply_to_message.from_user.id))
 
         # Check if the mentioned user is the superadmin
         if self._redis.get(redis_keys.SUPERADMIN) == update.message.reply_to_message.from_user.id:
@@ -449,7 +450,7 @@ class PoGORaidBot:
     @Decorator.UserMustBeBotAdmin
     def _handler_command_enablechat(self, update: Update, _: CallbackContext) -> bool:
         _LOGGER.info("Bot admin {} try to enable the chat {}".format(update.message.from_user.id,
-                                                                          update.message.chat.id))
+                                                                     update.message.chat.id))
 
         # Check if this chat is already enabled
         if self._redis.sismember(redis_keys.ENABLEDCHAT, update.message.chat.id):
@@ -467,7 +468,7 @@ class PoGORaidBot:
     @Decorator.UserMustBeBotAdmin
     def _handler_command_disablechat(self, update: Update, _: CallbackContext) -> bool:
         _LOGGER.info("Bot admin {} try to disable the chat {}".format(update.message.from_user.id,
-                                                                           update.message.chat.id))
+                                                                      update.message.chat.id))
 
         # Check if this chat is not enabled
         if not self._redis.sismember(redis_keys.ENABLEDCHAT, update.message.chat.id):
@@ -526,7 +527,7 @@ class PoGORaidBot:
     def _post_raid(self, raid: Raid, message: Message) -> None:
         options = {
             "disable_web_page_preview": True,
-            "parse_mode": ParseMode.MARKDOWN
+            "parse_mode": ParseMode.MARKDOWN_V2
         }
 
         # If the hangout is defined add the reply button to the message
