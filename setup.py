@@ -23,7 +23,6 @@ setup(
         'opencv-python ~= 4.1',
         'pytesseract ~= 0.3',
         'redis ~= 3.5',
-        'jinja2 ~= 2.10',
         'requests ~= 2.22',
         'schema ~= 0.7',
         'apscheduler ~= 3.6',
