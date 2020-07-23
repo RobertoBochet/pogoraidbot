@@ -1,4 +1,4 @@
-FROM python:3.7-slim as compiler
+FROM python:3.8-alpine as compiler
 
 WORKDIR /srv
 
@@ -8,7 +8,7 @@ COPY pogoraidbot ./pogoraidbot
 
 RUN python3 setup.py sdist bdist_wheel
 
-FROM python:3.7-slim
+FROM python:3.8-slim
 
 RUN apt-get update
 RUN apt-get install -y --no-install-recommends \
