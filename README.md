@@ -82,7 +82,7 @@ optional arguments:
 An example:
 
 ```bash
-$ python3 -m pogoraidbot -t [BOT_TOKEN] -r 127.0.0.1 -p 6379
+$ python3 -m pogoraidbot -t [BOT_TOKEN] -r redis://192.168.15.2:4044/3
 ```
 
 ## Dockerized version \[recommended]
@@ -166,5 +166,4 @@ In this project are used the following Python libraries:
 -   [opencv-python](https://pypi.org/project/opencv-python/) (MIT License)
 -   [pytesseract](https://pypi.org/project/pytesseract/) (GPLv3 License)
 -   [redis](https://pypi.org/project/redis/) (MIT License)
--   [jinja2](https://pypi.org/project/Jinja2/) (BSD License)
 -   [requests](https://pypi.org/project/requests/) (Apache 2.0 License)
