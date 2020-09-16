@@ -1,0 +1,45 @@
+name: Publish Docker Image
+
+on:
+  push:
+    tags:
+      - '?[0-9]+'
+      - '?[0-9]+.[0-9]+'
+      - '?[0-9]+.[0-9]+.[0-9]+'
+
+env:
+  IMAGE_NAME: robertobochet/pogoraidbot
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set version
+      run: |
+        VERSION="${GITHUB_REF/refs\/tags\//}"
+        export VERSION="${VERSION/v/}"
+        echo "__version__ = '${VERSION}'" > ./pogoraidbot/version.py
+    - name: Build
+      run: |
+        docker build . -t ${IMAGE_NAME}
+    - name: Create tags
+      run: |
+        export TAGS=("latest")
+        VERSIONS=(${VERSION//./ })
+        [ ${#VERSIONS[@]} -ge 1 ] && TAGS+=(${VERSIONS[0]})
+        [ ${#VERSIONS[@]} -ge 2 ] && TAGS+=(${VERSIONS[0]}.${VERSIONS[1]})
+        [ ${#VERSIONS[@]} -ge 3 ] && TAGS+=(${VERSIONS[0]}.${VERSIONS[1]}.${VERSIONS[2]})
+    - name: Tagging
+      run: |
+        for TAG in "${TAGS[@]}"; do
+          docker tag ${IMAGE_NAME} ${IMAGE_NAME}:${TAG}
+        done
+    - name: Login into DockerHub
+      run: echo ${{ secrets.DOCKER_TOKEN }} | docker login --username ${{ secrets.DOCKER_USERNAME }}
+    - name: Push to DockerHub
+      run: |
+        for TAG in "${TAGS[@]}"; do
+          docker push ${IMAGE_NAME}:${TAG}
+        done
