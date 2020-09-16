@@ -12,7 +12,7 @@ FROM python:3.8-slim
 
 RUN apt-get update
 RUN apt-get install -y --no-install-recommends \
-    libsm6 \
+    libgl1-mesa-glx \
     tesseract-ocr \
     tesseract-ocr-eng
 RUN apt-get clean
