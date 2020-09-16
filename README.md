@@ -1,9 +1,9 @@
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/dcfaeb382e18477491720692ea2f818f)](https://www.codacy.com/manual/RobertoBochet/pogoraidbot?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=RobertoBochet/pogoraidbot&amp;utm_campaign=Badge_Grade)
 [![GitHub](https://img.shields.io/github/license/robertobochet/pogoraidbot?color=blue)](https://github.com/RobertoBochet/pogoraidbot/blob/master/LICENSE)
-[![PyPI](https://img.shields.io/pypi/v/pogoraidbot?color=yellow)](https://pypi.org/project/pogoraidbot/)
+[![PyPI](https://img.shields.io/pypi/v/pogoraidbot?color=yellow&label=pypi%20version)](https://pypi.org/project/pogoraidbot/)
 [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/robertobochet/pogoraidbot/Upload%20Python%20Package?label=pypi%20build)](https://pypi.org/project/pogoraidbot/)
 [![Docker Image Version (latest semver)](https://img.shields.io/docker/v/robertobochet/pogoraidbot?color=blue&label=docker%20version&sort=semver)](https://hub.docker.com/r/robertobochet/pogoraidbot)
-[![Docker Cloud Build Status](https://img.shields.io/docker/cloud/build/robertobochet/pogoraidbot)](https://hub.docker.com/r/robertobochet/pogoraidbot)
+[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/robertobochet/pogoraidbot/Publish%20Docker%20Image?label=docker%20build)](https://hub.docker.com/r/robertobochet/pogoraidbot)
 
 ## Important
 
