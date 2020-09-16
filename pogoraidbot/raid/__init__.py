@@ -72,29 +72,22 @@ class Raid:
             return True
         return False
 
-    def toggle_remote(self, user: User) -> bool:
-        if user.id in self.participants:
-            self.participants[user.id].name = user.full_name
-            self.participants[user.id].type = Participant.Type.REMOTE if self.participants[
-                                                                             user.id].type != Participant.Type.REMOTE else Participant.Type.NORMAL
-            return True
-        return False
+    def toggle_remote(self, user: User) -> None:
+        self.toggle_participant_type(user, Participant.Type.REMOTE)
 
-    def toggle_remote_invite(self, user: User) -> bool:
-        if user.id in self.participants:
-            self.participants[user.id].name = user.full_name
-            self.participants[user.id].type = Participant.Type.REMOTE_INVITE if self.participants[
-                                                                             user.id].type != Participant.Type.REMOTE_INVITE else Participant.Type.NORMAL
-            return True
-        return False
+    def toggle_remote_invite(self, user: User) -> None:
+        self.toggle_participant_type(user, Participant.Type.REMOTE_INVITE)
 
-    def toggle_flyer(self, user: User) -> bool:
-        if user.id in self.participants:
-            self.participants[user.id].name = user.full_name
-            self.participants[user.id].type = Participant.Type.FLYER if self.participants[
-                                                                            user.id].type != Participant.Type.FLYER else Participant.Type.NORMAL
-            return True
-        return False
+    def toggle_flyer(self, user: User) -> None:
+        self.toggle_participant_type(user, Participant.Type.FLYER)
+
+    def toggle_participant_type(self, user: User, participant_type: Participant.Type) -> None:
+        if user.id not in self.participants:
+            self.add_participant(user)
+
+        self.participants[user.id].name = user.full_name
+        self.participants[user.id].type = participant_type \
+            if self.participants[user.id].type != participant_type else Participant.Type.NORMAL
 
     @property
     def participants_count(self) -> int:
