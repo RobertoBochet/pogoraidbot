@@ -19,7 +19,8 @@ class Participant:
     class Type(Enum):
         NORMAL = 1
         REMOTE = 2
-        FLYER = 3
+        REMOTE_INVITE = 3
+        FLYER = 4
 
     id: int
     name: str
@@ -29,6 +30,10 @@ class Participant:
     @property
     def is_remote(self) -> bool:
         return self.type == Participant.Type.REMOTE
+
+    @property
+    def is_remote_invite(self) -> bool:
+        return self.type == Participant.Type.REMOTE_INVITE
 
     @property
     def is_flyer(self) -> bool:
@@ -72,6 +77,14 @@ class Raid:
             self.participants[user.id].name = user.full_name
             self.participants[user.id].type = Participant.Type.REMOTE if self.participants[
                                                                              user.id].type != Participant.Type.REMOTE else Participant.Type.NORMAL
+            return True
+        return False
+
+    def toggle_remote_invite(self, user: User) -> bool:
+        if user.id in self.participants:
+            self.participants[user.id].name = user.full_name
+            self.participants[user.id].type = Participant.Type.REMOTE_INVITE if self.participants[
+                                                                             user.id].type != Participant.Type.REMOTE_INVITE else Participant.Type.NORMAL
             return True
         return False
 
@@ -139,6 +152,8 @@ class Raid:
 
                 if p.is_remote:
                     msg += "\U0001F3E1"
+                if p.is_remote_invite:
+                    msg += "\U0001F48C"
                 if p.is_flyer:
                     msg += "\U00002708"
 

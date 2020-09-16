@@ -267,7 +267,7 @@ class PoGORaidBot:
     def _handler_buttons(self, update: Update, _: CallbackContext) -> bool:
         try:
             # Validate the data
-            result = re.match(r"([a-zA-Z0-9]{8}):([arhf])", update.callback_query.data)
+            result = re.match(r"([a-zA-Z0-9]{8}):([arhif])", update.callback_query.data)
             # Try to retrieve the raid information
             raid = pickle.loads(self._redis.get(redis_keys.RAID.format(result.group(1))))
             # Get operation
@@ -285,6 +285,8 @@ class PoGORaidBot:
             raid.remove_participant(update.callback_query.from_user)
         elif op == "h":
             raid.toggle_remote(update.callback_query.from_user)
+        elif op == "i":
+            raid.toggle_remote_invite(update.callback_query.from_user)
         elif op == "f":
             raid.toggle_flyer(update.callback_query.from_user)
         else:
@@ -532,12 +534,17 @@ class PoGORaidBot:
 
         # If the hangout is defined add the reply button to the message
         if raid.hangout is not None:
-            options["reply_markup"] = InlineKeyboardMarkup([[
-                InlineKeyboardButton("\U00002795", callback_data=raid.code + ":a"),
-                InlineKeyboardButton("\U00002796", callback_data=raid.code + ":r"),
-                InlineKeyboardButton("\U0001F3E1", callback_data=raid.code + ":h"),
-                InlineKeyboardButton("\U00002708", callback_data=raid.code + ":f")
-            ]])
+            options["reply_markup"] = InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton("\U00002795", callback_data=raid.code + ":a"),
+                    InlineKeyboardButton("\U00002796", callback_data=raid.code + ":r")
+                ],
+                [
+                    InlineKeyboardButton("\U0001F3E1", callback_data=raid.code + ":h"),
+                    InlineKeyboardButton("\U0001F48C", callback_data=raid.code + ":i"),
+                    InlineKeyboardButton("\U00002708", callback_data=raid.code + ":f")
+                ]
+            ])
 
         # If the reference message is a screenshot, the bot replies to that
         elif message.from_user.id != self._id:
