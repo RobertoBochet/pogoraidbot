@@ -18,6 +18,7 @@ from telegram.ext import Updater, MessageHandler, CallbackQueryHandler, CommandH
 from telegram.ext.filters import Filters
 
 from . import about
+from .exceptions import ImpossibleRetrieveRaidFromDB, ImpossibleRetrieveRaidFromReply
 from .. import redis_keys
 from ..data import bosses, gyms
 from ..raid import Raid
@@ -173,6 +174,8 @@ class PoGORaidBot:
         # Set the handler for removeadmin command
         self._updater.dispatcher.add_handler(CommandHandler("removeadmin", self._handler_command_removeadmin,
                                                             Filters.reply))
+        # Set the handler for check command
+        self._updater.dispatcher.add_handler(CommandHandler("check", self._handler_command_check, Filters.reply))
 
         # Set the handler for the errors
         self._updater.dispatcher.add_error_handler(self._handler_error)
@@ -271,7 +274,7 @@ class PoGORaidBot:
     def _handler_buttons(self, update: Update, _: CallbackContext) -> bool:
         try:
             # Validate the data
-            result = re.match(r"([a-zA-Z0-9]{8}):([arhif])", update.callback_query.data)
+            result = re.match(r"([a-zA-Z0-9]{8}):([arhifs])", update.callback_query.data)
             # Try to retrieve the raid information
             raid = pickle.loads(self._redis.get(redis_keys.RAID.format(result.group(1))))
             # Get operation
@@ -293,6 +296,8 @@ class PoGORaidBot:
             raid.toggle_remote_invite(update.callback_query.from_user)
         elif op == "f":
             raid.toggle_flyer(update.callback_query.from_user)
+        elif op == "s":
+            raid.toggle_ready(update.callback_query.from_user)
         else:
             return False
 
@@ -345,7 +350,7 @@ class PoGORaidBot:
         raid.boss = b
 
         # Save the raid in the db
-        self._redis.setex(redis_keys.RAID.format(raid.code), 60 * 60 * 6, pickle.dumps(raid))
+        self._save_raid(raid)
 
         _LOGGER.debug(raid)
 
@@ -398,7 +403,7 @@ class PoGORaidBot:
         try:
             # Scan the screenshot
             self._scan_screenshot(update.message.reply_to_message)
-        except:
+        except:  # TODO: remove debug code
             traceback.print_exc()
             return False
 
@@ -492,6 +497,34 @@ class PoGORaidBot:
 
         return True
 
+    def _handler_command_check(self, update: Update, _: CallbackContext) -> bool:
+        _LOGGER.info("{} try to enable check from chat {}".format(update.message.from_user.id,
+                                                                  update.message.chat.id))
+
+        # Check if the message is a reply to a bot message
+        if update.message.reply_to_message.from_user.id != self._id:
+            return False
+
+        # Try to retrieve the raid from reply
+        try:
+            raid = self._get_raid_from_reply(update)
+        except ImpossibleRetrieveRaidFromReply:
+            return False
+
+        # Set the flag for check
+        raid.is_check_enabled = True
+
+        # Save the raid to db
+        self._save_raid(raid)
+
+        # Try to delete user message
+        self._try_to_delete(update.message)
+
+        # Updates the message
+        self._post_raid(raid, update.message.reply_to_message)
+
+        return True
+
     def _scan_screenshot(self, message: Message) -> None:
         # Get the highest resolution image
         img = message.photo[-1].get_file().download_as_bytearray()
@@ -533,6 +566,27 @@ class PoGORaidBot:
             except PermissionError:
                 _LOGGER.warning("Unable to create debug folder")
 
+    def _get_raid_from_reply(self, update: Update) -> Raid:
+        try:
+            # Search the code in the bot message
+            code = re.search(r"\[([a-zA-Z0-9]{8})\]", update.message.reply_to_message.text).group(1)
+        except Exception:
+            _LOGGER.error("Bad raid post format")
+            raise ImpossibleRetrieveRaidFromDB()
+
+        try:
+            # Try to retrieve the raid information
+            raid = pickle.loads(self._redis.get(redis_keys.RAID.format(code)))
+        except Exception:
+            _LOGGER.error("Impossible to retrieve a raid with code {} from db".format(code))
+            raise ImpossibleRetrieveRaidFromDB()
+
+        return raid
+
+    def _save_raid(self, raid: Raid):
+        # Save the raid in the db
+        self._redis.setex(redis_keys.RAID.format(raid.code), 60 * 60 * 6, pickle.dumps(raid))
+
     def _post_raid(self, raid: Raid, message: Message) -> None:
         options = {
             "disable_web_page_preview": True,
@@ -541,7 +595,7 @@ class PoGORaidBot:
 
         # If the hangout is defined add the reply button to the message
         if raid.hangout is not None:
-            options["reply_markup"] = InlineKeyboardMarkup([
+            buttons = [
                 [
                     InlineKeyboardButton("\U00002795", callback_data=raid.code + ":a"),
                     InlineKeyboardButton("\U00002796", callback_data=raid.code + ":r")
@@ -551,7 +605,15 @@ class PoGORaidBot:
                     InlineKeyboardButton("\U0001F48C", callback_data=raid.code + ":i"),
                     InlineKeyboardButton("\U00002708", callback_data=raid.code + ":f")
                 ]
-            ])
+            ]
+
+            # If check is enable adds the "ready" button
+            if raid.is_check_enabled:
+                buttons.append([
+                    InlineKeyboardButton("ready", callback_data=raid.code + ":s")
+                ])
+
+            options["reply_markup"] = InlineKeyboardMarkup(buttons)
 
         # If the reference message is a screenshot, the bot replies to that
         elif message.from_user.id != self._id:

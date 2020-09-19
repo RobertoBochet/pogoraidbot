@@ -26,6 +26,7 @@ class Participant:
     name: str
     type: Type = Type.NORMAL
     number: int = 1
+    is_ready: bool = False
 
     @property
     def is_remote(self) -> bool:
@@ -54,6 +55,7 @@ class Raid:
     boss: Boss = None
     is_aprx_time: bool = False
     participants: Dict[int, Participant] = field(default_factory=lambda: {})
+    is_check_enabled: bool = False
 
     def add_participant(self, user: User) -> None:
         if user.id in self.participants:
@@ -89,9 +91,19 @@ class Raid:
         self.participants[user.id].type = participant_type \
             if self.participants[user.id].type != participant_type else Participant.Type.NORMAL
 
+    def toggle_ready(self, user: User) -> bool:
+        if user.id not in self.participants:
+            return False
+
+        self.participants[user.id].is_ready = not self.participants[user.id].is_ready
+
     @property
     def participants_count(self) -> int:
         return reduce((lambda x, y: x + y), [p.number for _, p in self.participants.items()], 0)
+
+    @property
+    def are_all_ready(self) -> bool:
+        return all([p.is_ready for _, p in self.participants.items()])
 
     @property
     def effective_level(self) -> int:
@@ -141,14 +153,17 @@ class Raid:
             msg += "`─────────────────────`\n"
 
             for p_id, p in self.participants.items():
+                if self.is_check_enabled:
+                    msg += "\U00002705 " if p.is_ready else "\U0000274C "
+
                 msg += helpers.mention_markdown(p_id, p.name, version=2)
 
                 if p.is_remote:
-                    msg += "\U0001F3E1"
+                    msg += " \U0001F3E1"
                 if p.is_remote_invite:
-                    msg += "\U0001F48C"
+                    msg += " \U0001F48C"
                 if p.is_flyer:
-                    msg += "\U00002708"
+                    msg += " \U00002708"
 
                 if p.number > 1:
                     msg += " \\+{}".format(p.number - 1)
@@ -156,6 +171,10 @@ class Raid:
                 msg += "\n"
 
             msg += "`─────────────────────`\n"
+
+            if self.is_check_enabled:
+                msg += "__*All participants are ready*__\n" if self.are_all_ready else "__*Not all participants are ready*__\n"
+
             msg += "*{}* participants\n".format(self.participants_count)
 
         msg += "`[{}]`".format(self.code)
