@@ -17,6 +17,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode, Upda
 from telegram.ext import Updater, MessageHandler, CallbackQueryHandler, CommandHandler, CallbackContext
 from telegram.ext.filters import Filters
 
+from . import about
 from .. import redis_keys
 from ..data import bosses, gyms
 from ..raid import Raid
@@ -154,6 +155,9 @@ class PoGORaidBot:
         self._updater.dispatcher.add_handler(MessageHandler(
             Filters.reply & Filters.regex(r"^\s*[a-zA-Z]+\s*$"), self._handler_set_boss))
 
+        # Set the handler for about commands
+        self._updater.dispatcher.add_handler(CommandHandler("start", self._handler_command_about))
+        self._updater.dispatcher.add_handler(CommandHandler("about", self._handler_command_about))
         # Set the handler for scan command
         self._updater.dispatcher.add_handler(CommandHandler("scan", self._handler_command_scan))
         # Set the handler for enablechat command
@@ -352,6 +356,9 @@ class PoGORaidBot:
         self._post_raid(raid, update.message.reply_to_message)
 
         return True
+
+    def _handler_command_about(self, update: Update, _: CallbackContext) -> None:
+        update.message.chat.send_message(about.MESSAGE, parse_mode=ParseMode.MARKDOWN_V2)
 
     @Decorator.ChatMustBeEnabled
     @Decorator.UserMustBeAdmin
